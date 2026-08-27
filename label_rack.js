@@ -41,15 +41,14 @@ const calcBarcLength = (text, narroWidth, type = '128') => {
  * @returns {[string,number]} - SBPL string and the final vertical value
  */
 function center(elWidth, elHeight, arrow = null, prevV = null){
-    const centerH = maxH/2;
-    const calcH = Math.round((centerH - elWidth)/2);
+    // const centerH = maxH/2;
+    const calcH = Math.round((maxH - elWidth)/2);
     let startV = prevV && !arrow ? prevV : 0;
 
     if(arrow == 'up') startV = 15;
     else if(arrow == 'down') startV = 420;
-
+    
     const endV = startV + elHeight;
-
     const sbplStr = ESC + `H${calcH.toString().padStart(4,'0')}` + ESC + `V${startV.toString().padStart(4,'0')}`;
     // const endStr = ESC + `H${calcH.toString().padStart(4,'0')}` + ESC + `V${endP.toString().padStart(4,'0')}`;
     return [sbplStr,endV];
@@ -78,31 +77,76 @@ function drawArrow(arrow = 'up'){
  * @returns {[string,string]}
  */
 function createBarcodeText(text, V = null){
-    // add the centered barcode
-    const barcode = center(calcBarcLength(text,barcodeW, '128'),barcodeH,null,V)[0] +
-            barcodeF + text;
+    const [bcPos, bcEndV] = center(calcBarcLength(text, barcodeW, '128'), barcodeH, null, V);
+    const barcode = bcPos + barcodeF + text;
+
     const textw = fontW * text.length;
-    const readableText = center(textw, fontW + 10, null, barcode[1]);
+    const readableText = center(textw, fontW + 10, null, bcEndV + 10);
     
-    return [
-        barcode,
-        readableText
-    ]
+    return [barcode, readableText];
 }
 
 
-function generateLabel
-(
-    location,
-    arrow
-){
+/**
+ * Generates complete SBPL command payload for printing
+ * 
+ * @param {string} location - Location identifier / barcode value
+ * @param {'up' | 'down'} arrow - Arrow direction
+ * @returns {string} Complete SBPL job payload
+ */
+function generateLabel(location, arrow = 'up') {
+    const [arrowStr, arrowEndV] = drawArrow(arrow);
+    const [barcodeStr, [textPosStr]] = createBarcodeText(location, arrowEndV + 20);
+    const readableTextElement = textPosStr + font + location;
+
     const sbplString = [
-        ESC + 'A',
-        
+        ESC + 'A',            // Start SBPL Job Sequence
+        arrowStr,             // Render Arrow Graphic
+        barcodeStr,           // Render Code128 Barcode
+        readableTextElement,  // Render Human-Readable Text below Barcode
+        ESC + 'Q1',           // Set Print Quantity to 1
+        ESC + 'Z'             // End SBPL Job Sequence
+    ].join('');
 
-    ]
+    return sbplString;
 }
 
+/**
+ * Sends SBPL payload directly to network printer over TCP port 9100
+ * 
+ * @param {string} sbplData 
+ * @param {string} ip 
+ * @param {number} port 
+ */
+function sendToPrinter(sbplData, ip = PRINTER_IP, port = PRINTER_PORT) {
+    if (!ip) {
+        console.error('Error: PRINTER_IP target is missing.');
+        return;
+    }
 
+    const client = new net.Socket();
+
+    client.connect(port, ip, () => {
+        console.log(`Connected to printer at ${ip}:${port}`);
+        client.write(sbplData, 'utf8', () => {
+            console.log('Label payload transmitted successfully.');
+            client.end();
+        });
+    });
+
+    client.on('error', (err) => {
+        console.error('Socket Connection Error:', err.message);
+    });
+
+    client.on('close', () => {
+        console.log('Connection closed.');
+    });
+}
+
+// Example Usage:
+const labelData = generateLabel('LOC-A-1029', 'down');
+console.log(labelData.replace(/\x1B/g, '<ESC>'));
+
+// sendToPrinter(labelData);
 
 
