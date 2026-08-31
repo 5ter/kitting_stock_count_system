@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+
+/* Make sure Jade templates are scanned for class names, in addition to
+   whatever Tailwind's automatic detection already picks up. */
+@source "../views";
+
+/* Reuses your existing tailwind.config.js (colors, spacing, fonts, radii)
+   instead of rewriting it into @theme CSS variables. */
+@config "../tailwind.config.js";

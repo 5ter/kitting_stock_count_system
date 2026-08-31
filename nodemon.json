@@ -1,0 +1,9 @@
+{
+  "exec": "node ./bin/www",
+  "watch": ["bin/www", "app.js", "routes/"],
+  "ext": "js,json",
+  "ignore": ["public/**/*", "views/**/*"],
+  "events": {
+    "restart": "npx browser-sync reload --port 3001"
+  }
+}

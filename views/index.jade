@@ -1,0 +1,149 @@
+extends layout
+
+block content
+  //- ===== Top App Bar =====
+  header(class="w-full top-0 sticky flex items-center justify-between px-margin-mobile md:px-margin-desktop h-touch-target bg-surface border-b border-outline-variant z-50")
+    div(class="flex items-center gap-2")
+      span(class="material-symbols-outlined text-primary") warehouse
+      h1(class="font-headline-md text-headline-md font-bold text-primary") Label Generator
+    nav(class="hidden md:flex gap-4")
+      a(class="font-label-md text-label-md flex items-center gap-1 text-primary hover:bg-surface-container transition-colors px-2 py-1 rounded-DEFAULT" href="/")
+        span(class="material-symbols-outlined text-[18px]") label
+        | Generate
+      a(class="font-label-md text-label-md flex items-center gap-1 text-on-surface-variant hover:bg-surface-container transition-colors px-2 py-1 rounded-DEFAULT" href="/history")
+        span(class="material-symbols-outlined text-[18px]") history
+        | History
+      a(class="font-label-md text-label-md flex items-center gap-1 text-on-surface-variant hover:bg-surface-container transition-colors px-2 py-1 rounded-DEFAULT" href="/settings")
+        span(class="material-symbols-outlined text-[18px]") settings
+        | Settings
+
+  main(class="flex-1 flex flex-col md:flex-row overflow-hidden")
+    //- ===== Left panel: live preview grid =====
+    //- hx-target/hx-swap on the form (below) point at #preview-grid, which
+    //- lives inside this partial so the same fragment can be re-rendered
+    //- standalone by /labels/preview and /labels/generate.
+    section(class="flex-1 bg-surface-container-low p-margin-mobile md:p-margin-desktop flex items-center justify-center border-b md:border-b-0 md:border-r border-outline-variant overflow-y-auto")
+      div(class="flex flex-col items-center w-full max-w-4xl")
+        include partials/preview-grid.jade
+        button(class="mt-8 flex items-center gap-2 font-label-xl text-primary border border-primary rounded-full px-6 h-10 hover:bg-surface-container transition-colors")
+          span(class="material-symbols-outlined text-[20px]") grid_view
+          | View all #{totalCount} labels
+
+    //- ===== Right panel: configuration form =====
+    aside(class="w-full md:w-120 bg-surface flex flex-col h-full overflow-hidden")
+      form#label-form(
+        class="flex-1 overflow-y-auto p-margin-mobile md:p-margin-desktop space-y-stack-lg"
+        hx-post="/labels/preview"
+        hx-trigger="change, keyup changed delay:400ms"
+        hx-target="#preview-grid"
+        hx-swap="outerHTML"
+      )
+        //- Core Parameters
+        div
+          h3(class="font-label-xl text-label-xl text-on-surface uppercase border-b border-outline-variant pb-2 mb-stack-md") Core Parameters
+          div(class="space-y-stack-md")
+            div(class="flex flex-col gap-1")
+              label(class="font-label-md text-label-md text-on-surface") Plant Designation
+              select(name="plant" class="w-full h-touch-target px-3 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-body-md bg-surface-container-lowest")
+                option(value="A1") A1
+                option(value="A2") A2
+                option(value="A3") A3
+                option(value="A4") A4
+                option(value="A5") A5
+                option(value="A6") A6
+            div(class="flex flex-col gap-1")
+              label(class="font-label-md text-label-md text-on-surface") Location Type
+              select(name="locationType" class="w-full h-touch-target px-3 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-body-md bg-surface-container-lowest")
+                option WAREHOUSE
+                option STAGING
+                option DOCK
+
+        //- Shelf Settings
+        div
+          h3(class="font-label-xl text-label-xl text-on-surface uppercase border-b border-outline-variant pb-2 mb-stack-md mt-stack-lg") Shelf Settings
+          div(class="space-y-stack-md bg-surface-container-low p-4 rounded-DEFAULT border border-outline-variant")
+            div(class="flex border border-outline rounded-DEFAULT overflow-hidden bg-surface-container-lowest h-10")
+              label(class="flex-1 relative")
+                input(type="radio" name="shelfMode" value="range" class="peer sr-only" checked)
+                span(class="flex items-center justify-center h-full font-label-md text-on-surface peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer") Range
+              label(class="flex-1 relative")
+                input(type="radio" name="shelfMode" value="single" class="peer sr-only")
+                span(class="flex items-center justify-center h-full font-label-md text-on-surface border-l border-outline peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer") Single
+            div(class="grid grid-cols-3 gap-2 pt-2")
+              div(class="flex flex-col gap-1")
+                label(class="text-[10px] text-on-surface-variant uppercase font-semibold") Prefix
+                input(type="text" name="shelfPrefix" value="C" class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest")
+              div(class="flex flex-col gap-1")
+                label(class="text-[10px] text-on-surface-variant uppercase font-semibold") Start
+                input(type="number" name="shelfStart" value="1" class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest")
+              div(class="flex flex-col gap-1")
+                label(class="text-[10px] text-on-surface-variant uppercase font-semibold") End
+                input(type="number" name="shelfEnd" value="50" class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest")
+
+        //- Partition Settings
+        div
+          h3(class="font-label-xl text-label-xl text-on-surface uppercase border-b border-outline-variant pb-2 mb-stack-md mt-stack-lg") Partition Settings
+          div(class="space-y-stack-md bg-surface-container-low p-4 rounded-DEFAULT border border-outline-variant")
+            div(class="flex border border-outline rounded-DEFAULT overflow-hidden bg-surface-container-lowest h-10")
+              label(class="flex-1 relative")
+                input(type="radio" name="partitionMode" value="range" class="peer sr-only" checked)
+                span(class="flex items-center justify-center h-full font-label-md text-on-surface peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer") Range
+              label(class="flex-1 relative")
+                input(type="radio" name="partitionMode" value="single" class="peer sr-only")
+                span(class="flex items-center justify-center h-full font-label-md text-on-surface border-l border-outline peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer") Single
+            div(class="grid grid-cols-2 gap-2 pt-2")
+              div(class="flex flex-col gap-1")
+                label(class="text-[10px] text-on-surface-variant uppercase font-semibold") Start
+                input(type="text" name="partitionStart" value="A" class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest")
+              div(class="flex flex-col gap-1")
+                label(class="text-[10px] text-on-surface-variant uppercase font-semibold") End
+                input(type="text" name="partitionEnd" value="Z" class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest")
+
+        //- Directional Arrow — CSS-only segmented control, no JS needed.
+        div
+          h3(class="font-label-xl text-label-xl text-on-surface uppercase border-b border-outline-variant pb-2 mb-stack-md mt-stack-lg") Directional Arrow
+          div(class="flex border border-outline rounded-DEFAULT overflow-hidden bg-surface-container-lowest h-10")
+            label(class="flex-1 relative")
+              input(type="radio" name="arrowMode" value="none" class="peer sr-only")
+              span(class="flex items-center justify-center h-full font-label-md text-on-surface peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer") None
+            label(class="flex-1 relative")
+              input(type="radio" name="arrowMode" value="up" class="peer sr-only" checked)
+              span(class="flex items-center justify-center h-full gap-1 font-label-md text-on-surface border-l border-outline peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer")
+                span(class="material-symbols-outlined text-[16px]") arrow_upward
+                |  Up
+            label(class="flex-1 relative")
+              input(type="radio" name="arrowMode" value="down" class="peer sr-only")
+              span(class="flex items-center justify-center h-full gap-1 font-label-md text-on-surface border-l border-outline peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer")
+                span(class="material-symbols-outlined text-[16px]") arrow_downward
+                |  Down
+            label(class="flex-1 relative")
+              input(type="radio" name="arrowMode" value="both" class="peer sr-only")
+              span(class="flex items-center justify-center h-full gap-1 font-label-md text-on-surface border-l border-outline peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer")
+                span(class="material-symbols-outlined text-[16px]") swap_vert
+                |  Both
+
+      //- Fixed action footer — separate request from the live-preview form above.
+      div(class="p-margin-mobile border-t border-outline-variant bg-surface")
+        button(
+          type="button"
+          class="w-full h-touch-target bg-secondary-container hover:bg-secondary-fixed text-on-secondary-container font-label-xl text-label-xl rounded-DEFAULT flex items-center justify-center gap-2 transition-colors border-2 border-primary [&.htmx-request]:opacity-60"
+          hx-post="/labels/generate"
+          hx-include="#label-form"
+          hx-target="#generate-status"
+          hx-swap="innerHTML"
+        )
+          span(class="material-symbols-outlined") print
+          | Generate Batch
+        div#generate-status(class="text-center text-[12px] text-on-surface-variant mt-2")
+
+  //- ===== Bottom Nav (mobile only) =====
+  nav(class="md:hidden flex justify-around items-center h-16 bg-surface border-t border-outline-variant fixed bottom-0 w-full z-50")
+    a(class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1 active:scale-95 transition-transform" href="/")
+      span(class="material-symbols-outlined") label
+      span(class="font-label-md text-label-md") Generate
+    a(class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low active:scale-95 transition-transform px-4 py-1" href="/history")
+      span(class="material-symbols-outlined") history
+      span(class="font-label-md text-label-md") History
+    a(class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-low active:scale-95 transition-transform px-4 py-1" href="/settings")
+      span(class="material-symbols-outlined") settings
+      span(class="font-label-md text-label-md") Settings

@@ -1,0 +1,16 @@
+mixin labelCard(label)
+  - const active = !!label.active
+  - const cardClass = active ? 'bg-surface border-2 border-primary p-4 rounded-lg flex flex-col items-center gap-2 relative' : 'bg-surface border border-outline-variant p-4 rounded-lg flex flex-col items-center gap-2'
+  div(class=cardClass)
+    if active
+      div(class="absolute top-2 right-2 bg-secondary-container text-on-secondary-container text-[10px] px-1 rounded") Active
+    if label.arrow && label.arrow !== 'none'
+      div(class="flex items-center justify-center text-primary")
+        span(class="material-symbols-outlined font-bold")= label.arrow === 'up' ? 'arrow_upward' : 'arrow_downward'
+    div(class="w-full flex flex-col items-center justify-center py-4 border border-dashed border-outline-variant bg-surface-container-lowest")
+      div(class="flex h-12 w-32 items-end justify-center gap-px")
+        each barWidth in (label.barWidths || [1, 2, 1, 3, 1, 2, 1])
+          div(class=`w-${barWidth} h-full bg-primary`)
+    div(class="text-center")
+      h2(class="font-label-xl text-label-xl font-bold text-primary")= label.code
+      p(class="text-[10px] text-on-surface-variant uppercase")= label.meta

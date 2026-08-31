@@ -1,0 +1,31 @@
+{
+  "name": "warehouse-label-project",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "concurrently \"npm run watch:server\" \"npm run watch:css\" \"npm run watch:browser\"",
+    "watch:css": "npx tailwindcss -i ./styles/tailwind.css -o ./public/stylesheets/style.css --watch",
+    "watch:server": "cross-env DEBUG=warehouse-label-project:* nodemon",
+    "watch:browser": "wait-on http://localhost:3000 && browser-sync start --config bs-config.js"
+  },
+  "dependencies": {
+    "cookie-parser": "~1.4.4",
+    "debug": "~2.6.9",
+    "express": "^4.22.2",
+    "http-errors": "~1.6.3",
+    "jade": "^1.9.2",
+    "morgan": "^1.11.0",
+    "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "@tailwindcss/forms": "^0.5.11",
+    "browser-sync": "^3.0.4",
+    "concurrently": "^10.0.5",
+    "cross-env": "^10.1.0",
+    "nodemon": "^3.1.14",
+    "tailwindcss": "^4.3.3",
+    "wait-on": "^9.1.0"
+  }
+}

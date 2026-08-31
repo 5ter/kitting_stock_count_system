@@ -1,0 +1,5 @@
+include ../mixins/label-card.jade
+
+div#preview-grid(class="grid grid-cols-2 gap-4 w-full")
+  each label in labels
+    +labelCard(label)
