@@ -10,7 +10,7 @@ const sampleLabels = [
 ];
 
 router.get('/', (req, res) => {
-  res.render('index', { title: 'Label Generator', labels: sampleLabels, totalCount: sampleLabels.length });
+  res.render('index', { title: 'Generate Shelf Label', labels: sampleLabels, totalCount: sampleLabels.length });
 });
 
 router.post('/labels/preview', (req, res) => {

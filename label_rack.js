@@ -3,8 +3,8 @@ import net from 'net';
 
 
 // Printer Network Settings
-const PRINTER_IP = '10.36.61.78';
-const PRINTER_PORT = 9100;
+const PRINTER_IP = process.env.PRINTER_IP;
+const PRINTER_PORT = process.env.PRINTER_PORT;
 
 // SBPL Control Characters
 const ESC = '\x1B'
@@ -179,8 +179,13 @@ function sendToPrinter(sbplData, ip = PRINTER_IP, port = PRINTER_PORT) {
     });
 }
 
+module.exports = {
+    generateLabel,
+    sendToPrinter
+}
+
 // Example Usage:
-const labelData = generateLabel('LOC-A-1029', 'up');
-const labelData2 = generateLabel('LOC-A-1029', 'down');
-console.log(labelData.replace(/\x1B/g, '<ESC>'));
-sendToPrinter(labelData + labelData2);
+// const labelData = generateLabel('LOC-A-1029', 'up');
+// const labelData2 = generateLabel('LOC-A-1029', 'down');
+// console.log(labelData.replace(/\x1B/g, '<ESC>'));
+// sendToPrinter(labelData + labelData2);
