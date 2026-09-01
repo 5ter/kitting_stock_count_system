@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "commonjs",
+  "engines": {
+    "node": "v24.19.0"
+  },
   "scripts": {
     "dev": "concurrently \"npm run watch:server\" \"npm run watch:css\" \"npm run watch:browser\"",
     "watch:css": "npx tailwindcss -i ./styles/tailwind.css -o ./public/stylesheets/style.css --watch",
