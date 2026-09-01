@@ -25,9 +25,9 @@ block content
     section(class="flex-1 bg-surface-container-low p-margin-mobile md:p-margin-desktop flex items-center justify-center border-b md:border-b-0 md:border-r border-outline-variant overflow-y-auto")
       div(class="flex flex-col items-center w-full max-w-4xl")
         include partials/preview-grid.jade
-        button(class="mt-8 flex items-center gap-2 font-label-xl text-primary border border-primary rounded-full px-6 h-10 hover:bg-surface-container transition-colors")
-          span(class="material-symbols-outlined text-[20px]") grid_view
-          | View all #{totalCount} labels
+        span(class="mt-8 flex items-center gap-2 font-label-xl text-primary border border-primary rounded-full px-6 h-10 hover:bg-surface-container transition-colors")
+          //- span(class="material-symbols-outlined text-[20px]") grid_view
+          | Total: #{totalCount} labels
 
     //- ===== Right panel: configuration form =====
     aside(class="w-full md:w-120 bg-surface flex flex-col h-full overflow-hidden")
@@ -44,19 +44,20 @@ block content
           div(class="space-y-stack-md")
             div(class="flex flex-col gap-1")
               label(class="font-label-md text-label-md text-on-surface") Plant
-              select(name="plant" class="w-full h-touch-target px-3 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-body-md bg-surface-container-lowest")
-                option(value="A1") A1
-                option(value="A2") A2
-                option(value="A3") A3
-                option(value="A4") A4
-                option(value="A5") A5
-                option(value="A6") A6
+              select(name="plant" 
+                    hx-get="/departments" 
+                    hx-target="#department" 
+                    hx-trigger="change" 
+                    hx-swap="innerHTML" class="w-full h-touch-target px-3 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-body-md bg-surface-container-lowest")
+                option(value="" disabled selected) Select a Plant
+                each plant in plants
+                  option(value=plant)= plant
             div(class="flex flex-col gap-1")
               label(class="font-label-md text-label-md text-on-surface") Department
-              select(name="locationType" class="w-full h-touch-target px-3 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-body-md bg-surface-container-lowest")
-                option WAREHOUSE
-                option STAGING
-                option DOCK
+              select#department(name="locationType" class="w-full h-touch-target px-3 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-body-md bg-surface-container-lowest")
+                include partials/department.jade
+                  
+
 
         //- Shelf Settings
         div
