@@ -1,5 +1,4 @@
 'use strict';
-
 const db = require('../db');
 const { sendAndCheckStatus } = require('../print-service');
 
@@ -11,10 +10,21 @@ const PRINTER_PORT = Number(process.env.PRINTER_PORT) || 9100;
 const activeBatches = new Set();
 
 function describeError(status) {
-  if (status.headOpen) return 'Print head is open.';
-  if (status.paperOrRibbonError) return 'Paper or ribbon error.';
-  if (status.isOffline) return 'Printer is offline.';
-  return 'Unknown printer error.';
+  switch (status.errorCode) {
+    case 'HEAD_OPEN':            return 'Print head is open.';
+    case 'PAPER_END':            return 'Out of labels.';
+    case 'RIBBON_END':           return 'Out of ribbon.';
+    case 'MEDIA_ERROR':          return 'Media error -- check label alignment.';
+    case 'SENSOR_OR_PAPER_JAM':  return 'Sensor error or paper jam.';
+    case 'HEAD_ERROR':           return 'Print head error.';
+    case 'CARD_ERROR':           return 'Memory card error.';
+    case 'CUTTER_ERROR':         return 'Cutter error.';
+    case 'BUFFER_OVER':          return 'Printer buffer overflow.';
+    case 'OTHER_ERROR':          return 'Printer reported a command/format error.';
+    case 'RFID_TAG_ERROR':       return 'RFID tag read/write error.';
+    case 'RFID_PROTECT_ERROR':   return 'RFID tag is write-protected.';
+    default:                     return `Unknown printer error (${status.errorCode || status.statusChar || 'no code'}).`;
+  }
 }
 
 /**
@@ -31,35 +41,28 @@ async function processBatch(batchId) {
   if (activeBatches.has(batchId)) return;
   activeBatches.add(batchId);
   db.updateBatchStatus(batchId, 'processing');
-
   try {
     let label = db.getNextLabelToPrint(batchId);
-
     while (label) {
       db.markLabelStatus(label.id, 'printing');
-
       try {
-        const { status } = await sendAndCheckStatus(label.sbpl, PRINTER_IP, PRINTER_PORT);
-        const hasError = status.isOffline || status.paperOrRibbonError || status.headOpen;
-
-        if (hasError) {
+        const { success, status } = await sendAndCheckStatus(label.sbpl, PRINTER_IP, PRINTER_PORT);
+        if (!success) {
           db.markLabelStatus(label.id, 'failed', describeError(status));
           db.updateBatchStatus(batchId, 'paused');
           return;
-        }   
-
+        }
         db.markLabelStatus(label.id, 'completed');
       } catch (err) {
-        // Couldn't even reach the printer (network/timeout) -- treat the
-        // same way as a reported printer error.
+        // Couldn't even reach the printer, or it never confirmed completion
+        // (network failure, connection timeout, offline for too long, etc.)
+        // -- treat the same way as a reported printer error.
         db.markLabelStatus(label.id, 'failed', err.message);
         db.updateBatchStatus(batchId, 'paused');
         return;
       }
-
       label = db.getNextLabelToPrint(batchId);
     }
-
     db.updateBatchStatus(batchId, 'completed');
   } finally {
     activeBatches.delete(batchId);
