@@ -59,70 +59,256 @@ block content
                   
 
 
-        //- Shelf Settings
+        //- Shelf Settings Section
         div
           h3(class="font-label-xl text-label-xl text-on-surface uppercase border-b border-outline-variant pb-2 mb-stack-md mt-stack-lg") Shelf Settings
+          
           div(class="space-y-stack-md bg-surface-container-low p-4 rounded-DEFAULT border border-outline-variant")
+            
+            //- Hidden input to serialize shelfMode ('range' | 'single') for Express
+            input#shelfMode(
+              type="hidden" 
+              name="shelfMode" 
+              value="single"
+              hx-post="/api/preview"
+              hx-target="#preview-grid"
+              hx-trigger="change"
+              hx-include="closest form"
+            )
+
+            //- Mode Toggle Buttons
             div(class="flex border border-outline rounded-DEFAULT overflow-hidden bg-surface-container-lowest h-10")
-              label(class="flex-1 relative")
-                input(type="radio" name="shelfMode" value="range" class="peer sr-only" checked)
-                span(class="flex items-center justify-center h-full font-label-md text-on-surface peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer") Range
-              label(class="flex-1 relative")
-                input(type="radio" name="shelfMode" value="single" class="peer sr-only")
-                span(class="flex items-center justify-center h-full font-label-md text-on-surface border-l border-outline peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer") Single
-            div(class="grid grid-cols-3 gap-2 pt-2")
+              button#btn-shelf-range(
+                type="button"
+                class="flex-1 font-label-md text-on-surface hover:bg-surface-container transition-colors"
+                onclick="setShelfMode('range')"
+              ) Range
+              
+              button#btn-shelf-single(
+                type="button"
+                class="flex-1 font-label-md bg-primary text-on-primary border-l border-outline"
+                onclick="setShelfMode('single')"
+              ) Single
+
+            //- Range View (Hidden by default)
+            div#shelf-range-view(class="hidden grid grid-cols-3 gap-2 pt-2")
               div(class="flex flex-col gap-1")
                 label(class="text-[10px] text-on-surface-variant uppercase font-semibold") Prefix
-                input(type="text" name="shelfPrefix" value="C" class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest")
+                input(
+                  type="text"
+                  name="shelfPrefix"
+                  value="C"
+                  class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
+                  hx-post="/api/preview"
+                  hx-target="#preview-grid"
+                  hx-trigger="keyup changed delay:300ms"
+                  hx-include="closest form"
+                )
               div(class="flex flex-col gap-1")
                 label(class="text-[10px] text-on-surface-variant uppercase font-semibold") Start
-                input(type="number" name="shelfStart" value="1" class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest")
+                input(
+                  type="number"
+                  name="shelfStart"
+                  value="1"
+                  class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
+                  hx-post="/api/preview"
+                  hx-target="#preview-grid"
+                  hx-trigger="change, keyup changed delay:300ms"
+                  hx-include="closest form"
+                )
               div(class="flex flex-col gap-1")
                 label(class="text-[10px] text-on-surface-variant uppercase font-semibold") End
-                input(type="number" name="shelfEnd" value="50" class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest")
+                input(
+                  type="number"
+                  name="shelfEnd"
+                  value="10"
+                  class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
+                  hx-post="/api/preview"
+                  hx-target="#preview-grid"
+                  hx-trigger="change, keyup changed delay:300ms"
+                  hx-include="closest form"
+                )
 
-        //- Partition Settings
+            //- Single View (Active by default)
+            div#shelf-single-view(class="grid grid-cols-2 gap-2 pt-2")
+              div(class="flex flex-col gap-1")
+                label(class="text-[10px] text-on-surface-variant uppercase font-semibold") Prefix
+                input(
+                  type="text"
+                  name="shelfPrefix"
+                  value="C"
+                  class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
+                  hx-post="/api/preview"
+                  hx-target="#preview-grid"
+                  hx-trigger="keyup changed delay:300ms"
+                  hx-include="closest form"
+                )
+              div(class="flex flex-col gap-1")
+                label(class="text-[10px] text-on-surface-variant uppercase font-semibold") Shelf Number
+                input(
+                  type="number"
+                  name="shelfStart"
+                  value="1"
+                  class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
+                  hx-post="/api/preview"
+                  hx-target="#preview-grid"
+                  hx-trigger="change, keyup changed delay:300ms"
+                  hx-include="closest form"
+                )
+
+                //- Minimal JS helper to switch views & trigger HTMX
+                script.
+                  function setShelfMode(mode) {
+                    const hiddenInput = document.getElementById('shelfMode');
+                    if (hiddenInput.value === mode) return;
+
+                    hiddenInput.value = mode;
+                    const isRange = mode === 'range';
+
+                    // Toggle container visibility
+                    document.getElementById('shelf-range-view').classList.toggle('hidden', !isRange);
+                    document.getElementById('shelf-single-view').classList.toggle('hidden', isRange);
+
+                    // Update active button styling
+                    const btnRange = document.getElementById('btn-shelf-range');
+                    const btnSingle = document.getElementById('btn-shelf-single');
+
+                    btnRange.className = isRange 
+                      ? 'flex-1 font-label-md bg-primary text-on-primary' 
+                      : 'flex-1 font-label-md text-on-surface hover:bg-surface-container transition-colors';
+
+                    btnSingle.className = !isRange 
+                      ? 'flex-1 font-label-md bg-primary text-on-primary border-l border-outline' 
+                      : 'flex-1 font-label-md text-on-surface hover:bg-surface-container transition-colors border-l border-outline';
+
+                    // Dispatch change event on the hidden input so HTMX refreshes the live preview grid
+                    hiddenInput.dispatchEvent(new Event('change'));
+                  }
+        //- Partition Settings Section
         div
           h3(class="font-label-xl text-label-xl text-on-surface uppercase border-b border-outline-variant pb-2 mb-stack-md mt-stack-lg") Partition Settings
+          
           div(class="space-y-stack-md bg-surface-container-low p-4 rounded-DEFAULT border border-outline-variant")
+            
+            //- Hidden input to serialize partitionMode ('range' | 'single') for Express
+            input#partitionMode(
+              type="hidden" 
+              name="partitionMode" 
+              value="range"
+              hx-post="/api/preview"
+              hx-target="#preview-grid"
+              hx-trigger="change"
+              hx-include="closest form"
+            )
+
+            //- Mode Toggle Buttons
             div(class="flex border border-outline rounded-DEFAULT overflow-hidden bg-surface-container-lowest h-10")
-              label(class="flex-1 relative")
-                input(type="radio" name="partitionMode" value="range" class="peer sr-only" checked)
-                span(class="flex items-center justify-center h-full font-label-md text-on-surface peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer") Range
-              label(class="flex-1 relative")
-                input(type="radio" name="partitionMode" value="single" class="peer sr-only")
-                span(class="flex items-center justify-center h-full font-label-md text-on-surface border-l border-outline peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer") Single
-            div(class="grid grid-cols-2 gap-2 pt-2")
+              button#btn-partition-range(
+                type="button"
+                class="flex-1 font-label-md bg-primary text-on-primary"
+                onclick="setPartitionMode('range')"
+              ) Range
+              
+              button#btn-partition-none(
+                type="button"
+                class="flex-1 font-label-md text-on-surface hover:bg-surface-container transition-colors border-l border-outline"
+                onclick="setPartitionMode('none')"
+              ) None
+
+            //- Range View (Active by default)
+            div#partition-range-view(class="grid grid-cols-2 gap-2 pt-2")
               div(class="flex flex-col gap-1")
                 label(class="text-[10px] text-on-surface-variant uppercase font-semibold") Start
-                input(type="text" name="partitionStart" value="A" class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest")
+                input(
+                  type="text"
+                  name="partitionStart"
+                  value="A"
+                  class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
+                  hx-post="/api/preview"
+                  hx-target="#preview-grid"
+                  hx-trigger="keyup changed delay:300ms"
+                  hx-include="closest form"
+                )
               div(class="flex flex-col gap-1")
                 label(class="text-[10px] text-on-surface-variant uppercase font-semibold") End
-                input(type="text" name="partitionEnd" value="Z" class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest")
+                input(
+                  type="text"
+                  name="partitionEnd"
+                  value="Z"
+                  class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
+                  hx-post="/api/preview"
+                  hx-target="#preview-grid"
+                  hx-trigger="keyup changed delay:300ms"
+                  hx-include="closest form"
+                )
 
-        //- Directional Arrow — CSS-only segmented control, no JS needed.
+          
+        //- Script to switch modes, disable/enable inputs, and trigger HTMX
+        script.
+          function setPartitionMode(mode) {
+            const hiddenInput = document.getElementById('partitionMode');
+            if (hiddenInput.value === mode) return;
+
+            hiddenInput.value = mode;
+            const isRange = mode === 'range';
+            const rangeView = document.getElementById('partition-range-view');
+
+            // 1. Toggle visibility of the range inputs container
+            rangeView.classList.toggle('hidden', !isRange);
+
+            // 2. Enable inputs in Range mode, Disable them in None mode
+            // (Disabled inputs are ignored by HTMX/Express during form serialization)
+            const inputs = rangeView.querySelectorAll('input');
+            inputs.forEach(input => {
+              input.disabled = !isRange;
+            });
+
+            // 3. Update toggle button styling
+            const btnRange = document.getElementById('btn-partition-range');
+            const btnNone = document.getElementById('btn-partition-none');
+
+            btnRange.className = isRange 
+              ? 'flex-1 font-label-md bg-primary text-on-primary' 
+              : 'flex-1 font-label-md text-on-surface hover:bg-surface-container transition-colors';
+
+            btnNone.className = !isRange 
+              ? 'flex-1 font-label-md bg-primary text-on-primary border-l border-outline' 
+              : 'flex-1 font-label-md text-on-surface hover:bg-surface-container transition-colors border-l border-outline';
+
+            // 4. Dispatch change event to re-trigger HTMX preview grid update
+            hiddenInput.dispatchEvent(new Event('change'));
+          }
+        //- Directional Arrow — CSS-only segmented control with HTMX preview trigger
         div
           h3(class="font-label-xl text-label-xl text-on-surface uppercase border-b border-outline-variant pb-2 mb-stack-md mt-stack-lg") Directional Arrow
-          div(class="flex border border-outline rounded-DEFAULT overflow-hidden bg-surface-container-lowest h-10")
+          div(
+            class="flex border border-outline rounded-DEFAULT overflow-hidden bg-surface-container-lowest h-10"
+            hx-post="/api/preview"
+            hx-target="#preview-grid"
+            hx-trigger="change"
+            hx-include="closest form"
+          )
             label(class="flex-1 relative")
               input(type="radio" name="arrowMode" value="none" class="peer sr-only")
               span(class="flex items-center justify-center h-full font-label-md text-on-surface peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer") None
+            
             label(class="flex-1 relative")
               input(type="radio" name="arrowMode" value="up" class="peer sr-only" checked)
               span(class="flex items-center justify-center h-full gap-1 font-label-md text-on-surface border-l border-outline peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer")
                 span(class="material-symbols-outlined text-[16px]") arrow_upward
                 |  Up
+            
             label(class="flex-1 relative")
               input(type="radio" name="arrowMode" value="down" class="peer sr-only")
               span(class="flex items-center justify-center h-full gap-1 font-label-md text-on-surface border-l border-outline peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer")
                 span(class="material-symbols-outlined text-[16px]") arrow_downward
                 |  Down
+            
             label(class="flex-1 relative")
               input(type="radio" name="arrowMode" value="both" class="peer sr-only")
               span(class="flex items-center justify-center h-full gap-1 font-label-md text-on-surface border-l border-outline peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer")
                 span(class="material-symbols-outlined text-[16px]") swap_vert
                 |  Both
-
       //- Fixed action footer — separate request from the live-preview form above.
       div(class="p-margin-mobile border-t border-outline-variant bg-surface")
         button(
@@ -134,7 +320,7 @@ block content
           hx-swap="innerHTML"
         )
           span(class="material-symbols-outlined") print
-          | Generate Batch
+          | Generate #{totalCount} Label
         div#generate-status(class="text-center text-[12px] text-on-surface-variant mt-2")
 
   //- ===== Bottom Nav (mobile only) =====
