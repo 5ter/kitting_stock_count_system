@@ -176,73 +176,12 @@ function generateLabel(location, arrow = '') {
     return sbplString;
 }
 
-/**
- * Sends SBPL payload directly to network printer over TCP port 9100
- * 
- * @param {string} sbplData 
- * @param {string} ip 
- * @param {number} port 
- */
-function sendToPrinter(sbplData, ip = PRINTER_IP, port = PRINTER_PORT) {
-    if (!ip) {
-        console.error('Error: PRINTER_IP target is missing.');
-        return;
-    }
-
-    const client = new net.Socket();
-
-    client.connect(port, ip, () => {
-        console.log(`Connected to printer at ${ip}:${port}`);
-        client.write(sbplData, 'utf8', () => {
-            console.log('Label payload transmitted successfully.');
-        });
-        client.write(ENQ);
-    });
-
-    // 3. Listen for printer response
-    client.on('data', (data) => {
-        const responseHex = data.toString('hex');
-        const responseAscii = data.toString('ascii');
-        
-        console.log('Printer Response (ASCII):', responseAscii);
-        console.log('Printer Response (HEX):', responseHex);
-        parseSatoStatus(responseAscii);
-        
-        client.end(); // Close connection after receiving status
-    });
-    
-    client.on('error', (err) => {
-        console.error('Socket Connection Error:', err.message);
-    });
-    
-    // client.on('close', () => {
-    //     console.log('Connection closed.');
-    // });
-    // client.end();
-}
-
-/**
- * Parses SATO Status 4 Packet
- */
-function parseSatoStatus(statusStr) {
-    // Typical Status 4 Response format: <STX>[Status1][Status2][RemainingLabels]<ETX>
-    // Common Status 1 characters:
-    if (statusStr.includes('A')) console.log('Status: Online / Ready');
-    else if (statusStr.includes('B')) console.log('Status: Offline / Paused');
-    else if (statusStr.includes('G')) console.log('Error: Paper / Ribbon End');
-    else if (statusStr.includes('H')) console.log('Error: Print Head Open');
-    else if (statusStr.includes('b')) console.log('Status: Printing in progress...');
-}
-
-
 // Example Usage:
 // const labelData = generateLabel('A1_WAREHOUSE_C99-A1', 'down');
-const labelData = generateLabel('A1FWAREHOUSEDC99GA3TQWETYY', '');
-console.log(labelData.replace(/\x1B/g, '<ESC>'));
-sendToPrinter(labelData);
+// const labelData = generateLabel('A1FWAREHOUSEDC99GA3TQWETYY', '');
+// console.log(labelData.replace(/\x1B/g, '<ESC>'));
 // sendToPrinter(labelData2);
 
 module.exports = {
     generateLabel,
-    sendToPrinter
 }

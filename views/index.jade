@@ -17,17 +17,18 @@ block content
         span(class="material-symbols-outlined text-[18px]") settings
         | Settings
 
-  main(class="flex-1 flex flex-col md:flex-row overflow-hidden")
+  main(class="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden")
     //- ===== Left panel: live preview grid =====
     //- hx-target/hx-swap on the form (below) point at #preview-grid, which
     //- lives inside this partial so the same fragment can be re-rendered
     //- standalone by /labels/preview and /labels/generate.
-    section(class="flex-1 bg-surface-container-low p-margin-mobile md:p-margin-desktop flex items-center justify-center border-b md:border-b-0 md:border-r border-outline-variant overflow-y-auto")
+    section(class="flex-1 min-h-0 bg-surface-container-low p-margin-mobile md:p-margin-desktop flex flex-col items-center justify-start border-b md:border-b-0 md:border-r border-outline-variant overflow-y-auto")
       div(class="flex flex-col items-center w-full max-w-4xl")
-        include partials/preview-grid.jade
+        div#preview-grid(class="w-full flex flex-col items-center gap-6")
+          include partials/preview-grid.jade
         span(class="mt-8 flex items-center gap-2 font-label-xl text-primary border border-primary rounded-full px-6 h-10 hover:bg-surface-container transition-colors")
           //- span(class="material-symbols-outlined text-[20px]") grid_view
-          | Total: #{totalCount} labels
+          | Total: #{totalCount || 0} labels
 
     //- ===== Right panel: configuration form =====
     aside(class="w-full md:w-120 bg-surface flex flex-col h-full overflow-hidden")
@@ -54,7 +55,7 @@ block content
                 option(value="" selected) Select a Plant
                 each plant in plants
                   option(value=plant)= plant
-                  
+
             div(class="flex flex-col gap-1")
               label(class="font-label-md text-label-md text-on-surface") Department
               select#department(name="department" required class="w-full h-touch-target px-3 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-body-md bg-surface-container-lowest")
@@ -73,10 +74,6 @@ block content
               type="hidden" 
               name="shelfMode" 
               value="single"
-              hx-post="/label/preview"
-              hx-target="#preview-grid"
-              hx-trigger="change"
-              hx-include="closest form"
             )
 
             //- Mode Toggle Buttons
@@ -101,11 +98,8 @@ block content
                   type="text"
                   name="shelfPrefix"
                   value="C"
+                  disabled
                   class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
-                  hx-post="/label/preview"
-                  hx-target="#preview-grid"
-                  hx-trigger="keyup changed delay:300ms"
-                  hx-include="closest form"
                 )
               div(class="flex flex-col gap-1")
                 label(class="text-[10px] text-on-surface-variant uppercase font-semibold") Start
@@ -113,11 +107,8 @@ block content
                   type="number"
                   name="shelfStart"
                   value="1"
+                  disabled
                   class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
-                  hx-post="/label/preview"
-                  hx-target="#preview-grid"
-                  hx-trigger="change, keyup changed delay:300ms"
-                  hx-include="closest form"
                 )
               div(class="flex flex-col gap-1")
                 label(class="text-[10px] text-on-surface-variant uppercase font-semibold") End
@@ -125,11 +116,8 @@ block content
                   type="number"
                   name="shelfEnd"
                   value="10"
+                  disabled
                   class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
-                  hx-post="/label/preview"
-                  hx-target="#preview-grid"
-                  hx-trigger="change, keyup changed delay:300ms"
-                  hx-include="closest form"
                 )
 
             //- Single View (Active by default)
@@ -141,10 +129,6 @@ block content
                   name="shelfPrefix"
                   value="C"
                   class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
-                  hx-post="/label/preview"
-                  hx-target="#preview-grid"
-                  hx-trigger="keyup changed delay:300ms"
-                  hx-include="closest form"
                 )
               div(class="flex flex-col gap-1")
                 label(class="text-[10px] text-on-surface-variant uppercase font-semibold") Shelf Number
@@ -153,10 +137,6 @@ block content
                   name="shelfStart"
                   value="1"
                   class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
-                  hx-post="/label/preview"
-                  hx-target="#preview-grid"
-                  hx-trigger="change, keyup changed delay:300ms"
-                  hx-include="closest form"
                 )
 
                 //- Minimal JS helper to switch views & trigger HTMX
@@ -192,8 +172,12 @@ block content
                       : 'flex-1 font-label-md text-on-surface hover:bg-surface-container transition-colors border-l border-outline';
 
                     // Dispatch change event on the hidden input so HTMX refreshes the live preview grid
-                    hiddenInput.dispatchEvent(new Event('change'));
+                    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+                    // Prevent form submission when buttons are clicked
+                    event.preventDefault();
                   }
+       
         //- Partition Settings Section
         div
           h3(class="font-label-xl text-label-xl text-on-surface uppercase border-b border-outline-variant pb-2 mb-stack-md mt-stack-lg") Partition Settings
@@ -204,40 +188,33 @@ block content
             input#partitionMode(
               type="hidden" 
               name="partitionMode" 
-              value="range"
-              hx-post="/label/preview"
-              hx-target="#preview-grid"
-              hx-trigger="change"
-              hx-include="closest form"
+              value="none"
             )
 
             //- Mode Toggle Buttons
             div(class="flex border border-outline rounded-DEFAULT overflow-hidden bg-surface-container-lowest h-10")
               button#btn-partition-range(
                 type="button"
-                class="flex-1 font-label-md bg-primary text-on-primary"
+                class="flex-1 font-label-md text-on-surface hover:bg-surface-container transition-colors"
                 onclick="setPartitionMode('range')"
               ) Range
               
               button#btn-partition-none(
                 type="button"
-                class="flex-1 font-label-md text-on-surface hover:bg-surface-container transition-colors border-l border-outline"
+                class="flex-1 font-label-md bg-primary text-on-primary border-l border-outline"
                 onclick="setPartitionMode('none')"
               ) None
 
-            //- Range View (Active by default)
-            div#partition-range-view(class="grid grid-cols-2 gap-2 pt-2")
+            //- Range View (Enabled when Range is selected)
+            div#partition-range-view(class="hidden grid grid-cols-2 gap-2 pt-2")
               div(class="flex flex-col gap-1")
                 label(class="text-[10px] text-on-surface-variant uppercase font-semibold") Start
                 input(
                   type="text"
                   name="partitionStart"
                   value="A"
+                  disabled
                   class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
-                  hx-post="/label/preview"
-                  hx-target="#preview-grid"
-                  hx-trigger="keyup changed delay:300ms"
-                  hx-include="closest form"
                 )
               div(class="flex flex-col gap-1")
                 label(class="text-[10px] text-on-surface-variant uppercase font-semibold") End
@@ -245,11 +222,8 @@ block content
                   type="text"
                   name="partitionEnd"
                   value="Z"
+                  disabled
                   class="w-full h-touch-target px-2 border border-outline focus:border-2 focus:border-primary rounded-DEFAULT font-body-md text-center bg-surface-container-lowest"
-                  hx-post="/label/preview"
-                  hx-target="#preview-grid"
-                  hx-trigger="keyup changed delay:300ms"
-                  hx-include="closest form"
                 )
 
           
@@ -286,18 +260,12 @@ block content
               : 'flex-1 font-label-md text-on-surface hover:bg-surface-container transition-colors border-l border-outline';
 
             // 4. Dispatch change event to re-trigger HTMX preview grid update
-            hiddenInput.dispatchEvent(new Event('change'));
+            hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
           }
         //- Directional Arrow — CSS-only segmented control with HTMX preview trigger
         div
           h3(class="font-label-xl text-label-xl text-on-surface uppercase border-b border-outline-variant pb-2 mb-stack-md mt-stack-lg") Directional Arrow
-          div(
-            class="flex border border-outline rounded-DEFAULT overflow-hidden bg-surface-container-lowest h-10"
-            hx-post="/label/preview"
-            hx-target="#preview-grid"
-            hx-trigger="change"
-            hx-include="closest form"
-          )
+          div(class="flex border border-outline rounded-DEFAULT overflow-hidden bg-surface-container-lowest h-10")
             label(class="flex-1 relative")
               input(type="radio" name="arrowMode" value="none" class="peer sr-only")
               span(class="flex items-center justify-center h-full font-label-md text-on-surface peer-checked:bg-primary peer-checked:text-on-primary transition-colors cursor-pointer") None
@@ -325,6 +293,7 @@ block content
           type="submit"
           class="w-full h-touch-target bg-secondary-container hover:bg-secondary-fixed text-on-secondary-container font-label-xl text-label-xl rounded-DEFAULT flex items-center justify-center gap-2 transition-colors border-2 border-primary [&.htmx-request]:opacity-60"
           hx-post="/labels/generate"
+          hx-include="#label-form"
           hx-target="#generate-status"
           hx-swap="innerHTML"
         )

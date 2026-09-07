@@ -1,5 +1,15 @@
 include ../mixins/label-card.jade
 
-div#preview-grid(class="grid grid-cols-2 gap-4 w-full")
-  each label in labels
-    +labelCard(label)
+- const total = labels ? labels.length : 0
+
+if total === 0
+  p(class="text-on-surface-variant text-sm") No labels to preview yet.
+
+else if total === 1
+  div(class="flex justify-center w-full py-4")
+    div(class="w-full max-w-sm")
+      +labelCard(labels[0])
+else
+  div(class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full")
+    each label in labels
+      +labelCard(label)

@@ -19,7 +19,7 @@ db.exec(`
     shelf_end TEXT,
     partition_start TEXT,
     partition_end TEXT,
-    arrow TEXT NOT NULL DEFAULT 'up',
+    arrow TEXT NOT NULL DEFAULT 'none',
     status TEXT NOT NULL DEFAULT 'pending', -- pending | processing | paused | completed
     total_count INTEGER NOT NULL,
     created_at TEXT NOT NULL
@@ -51,13 +51,13 @@ function createBatch(form, totalCount) {
   `);
   const result = stmt.run(
     form.plant,
-    form.locationType,
+    form.locationType || form.department,
     form.shelfPrefix || null,
     form.shelfStart || null,
     form.shelfEnd || null,
     form.partitionStart || null,
     form.partitionEnd || null,
-    form.arrowMode || 'up',
+    form.arrowMode || 'none',
     totalCount,
     new Date().toISOString()
   );
@@ -67,7 +67,7 @@ function createBatch(form, totalCount) {
 function addLabel(batchId, sequenceNo, code, sbpl) {
   db.prepare(`
     INSERT INTO labels (batch_id, sequence_no, location_code, sbpl, status)
-    VALUES (?, ?, ?, ?, ?, 'pending')
+    VALUES (?, ?, ?, ?, 'pending')
   `).run(batchId, sequenceNo, code, sbpl);
 }
 

@@ -1,6 +1,6 @@
 'use strict';
 const db = require('../db');
-const { sendAndCheckStatus } = require('../print-service');
+const { sendAndCheckStatus } = require('../printer/print-service');
 
 const PRINTER_IP = process.env.PRINTER_IP;
 const PRINTER_PORT = Number(process.env.PRINTER_PORT) || 9100;
@@ -38,7 +38,7 @@ function describeError(status) {
  * handler, they just kick it off and let the client poll for progress.
  */
 async function processBatch(batchId) {
-  if (activeBatches.has(batchId)) return;
+  if (activeBatches.has(batchId)) return db.getBatch(batchId);
   activeBatches.add(batchId);
   db.updateBatchStatus(batchId, 'processing');
   try {
@@ -50,7 +50,7 @@ async function processBatch(batchId) {
         if (!success) {
           db.markLabelStatus(label.id, 'failed', describeError(status));
           db.updateBatchStatus(batchId, 'paused');
-          return;
+          return db.getBatch(batchId);
         }
         db.markLabelStatus(label.id, 'completed');
       } catch (err) {
@@ -59,11 +59,12 @@ async function processBatch(batchId) {
         // -- treat the same way as a reported printer error.
         db.markLabelStatus(label.id, 'failed', err.message);
         db.updateBatchStatus(batchId, 'paused');
-        return;
+        return db.getBatch(batchId);
       }
       label = db.getNextLabelToPrint(batchId);
     }
     db.updateBatchStatus(batchId, 'completed');
+    return db.getBatch(batchId);
   } finally {
     activeBatches.delete(batchId);
   }
