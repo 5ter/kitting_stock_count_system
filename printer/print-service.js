@@ -1,5 +1,7 @@
 const { Socket } = require('node:net');
 
+const ENQ = '\x05';
+
 const STATUS4_CODES = {
     '0': { mode: 'offline', ribbonNearEnd: false, bufferNearFull: false, printHalted: false },
     '1': { mode: 'offline', ribbonNearEnd: true,  bufferNearFull: false, printHalted: false },
