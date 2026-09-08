@@ -130,6 +130,34 @@ function sendAndCheckStatus(sbplData, ip, port = 9100, opts = {}) {
     });
 }
 
+function testConnection(ip, port = 9100, timeoutMs = 3000) {
+    return new Promise((resolve, reject) => {
+        if (!ip) return reject(new Error('Printer IP address is required.'));
+        const client = new Socket();
+        let settled = false;
+        const finish = (handler, value) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeout);
+            client.destroy();
+            handler(value);
+        };
+        const timeout = setTimeout(() => finish(reject, new Error('Printer connection timed out.')), timeoutMs);
+        client.setTimeout(timeoutMs);
+        client.connect(port, ip, () => client.write(ENQ));
+        client.on('data', chunk => {
+            const status = parseSatoStatus(chunk);
+            if (status.errorCode === 'MALFORMED_RESPONSE') {
+                return finish(reject, new Error('Printer returned an invalid status response.'));
+            }
+            finish(resolve, { status });
+        });
+        client.on('timeout', () => finish(reject, new Error('Printer connection timed out.')));
+        client.on('error', error => finish(reject, error));
+    });
+}
+
 module.exports = {
     sendAndCheckStatus,
+    testConnection,
 };

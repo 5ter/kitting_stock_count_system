@@ -176,6 +176,17 @@ function getHistory() {
   }));
 }
 
+function clearHistory() {
+  db.exec('BEGIN');
+  try {
+    db.exec('DELETE FROM labels; DELETE FROM batches;');
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+}
+
 module.exports = {
   createBatch,
   addLabel,
@@ -183,5 +194,6 @@ module.exports = {
   markLabelStatus,
   updateBatchStatus,
   getBatch,
-  getHistory
+  getHistory,
+  clearHistory
 };

@@ -45,6 +45,31 @@ block content
               label(class="font-label-md text-on-surface-variant" for="printer-port") Printer port
               input#printer-port(name="printerPort" type="number" min="1" max="65535" required class="w-full h-touch-target px-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest text-on-surface" value=printerPort)
           button(type="submit" class="h-touch-target px-5 bg-primary text-on-primary font-label-md rounded-DEFAULT hover:opacity-90") Save printer settings
+          button#test-printer(type="button" class="h-touch-target px-5 border border-primary text-primary font-label-md rounded-DEFAULT hover:bg-surface-container") Test connection
+          span#printer-test-result(class="text-body-sm text-on-surface-variant")
+
+      section(class="bg-surface border border-outline-variant rounded-DEFAULT p-5 space-y-5")
+        div(class="flex items-center justify-between border-b border-outline-variant pb-4")
+          div
+            h3(class="font-title-lg text-title-lg text-on-surface") Application
+            p(class="text-body-sm text-on-surface-variant") Limits and history tools are stored separately from printer connection settings.
+          span(class="material-symbols-outlined text-primary") tune
+        form(method="post" action="/settings/application" class="space-y-3")
+          label(class="font-label-md text-on-surface-variant" for="max-labels") Maximum labels per batch
+          input#max-labels(name="maxLabelsPerBatch" type="number" min="0" class="w-full h-touch-target px-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest text-on-surface" value=maxLabelsPerBatch)
+          p(class="text-body-sm text-on-surface-variant") Use 0 for no limit.
+          button(type="submit" class="h-touch-target px-5 bg-primary text-on-primary font-label-md rounded-DEFAULT hover:opacity-90") Save application settings
+
+      section(class="bg-surface border border-outline-variant rounded-DEFAULT p-5 space-y-4")
+        div
+          h3(class="font-title-lg text-title-lg text-on-surface") History tools
+          p(class="text-body-sm text-on-surface-variant") Export a backup before clearing printed batch history.
+        div(class="flex flex-wrap gap-3")
+          a(class="h-touch-target px-5 flex items-center bg-secondary-container text-on-secondary-container font-label-md rounded-DEFAULT" href="/settings/history/export") Export history
+          form(method="post" action="/settings/history/clear" onsubmit="return confirm('Clear all batch and label history? This cannot be undone.')")
+            button(type="submit" class="h-touch-target px-5 bg-error-container text-on-error-container font-label-md rounded-DEFAULT") Clear history
+        if historyCleared
+          p(class="text-body-sm text-tertiary") History cleared.
 
       section(class="bg-surface border border-outline-variant rounded-DEFAULT p-5 space-y-4")
         div(class="flex items-center justify-between")
@@ -55,6 +80,28 @@ block content
         div(class="flex items-center justify-between bg-surface-container-low px-3 py-3 rounded-DEFAULT")
           span(class="font-label-md text-on-surface-variant") Time zone
           span(class="font-mono text-body-sm text-on-surface")= timeZone
+
+  script.
+    document.getElementById('test-printer').addEventListener('click', async () => {
+      const button = document.getElementById('test-printer');
+      const result = document.getElementById('printer-test-result');
+      button.disabled = true;
+      result.textContent = 'Testing connection...';
+      try {
+        const response = await fetch('/settings/test-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(new FormData(document.querySelector('form[method="post"]')))
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Connection failed.');
+        result.textContent = `Connected. Printer status: ${data.status}.`;
+      } catch (error) {
+        result.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
 
   nav(class="md:hidden flex justify-around items-center h-16 bg-surface border-t border-outline-variant fixed bottom-0 w-full z-50")
     a(class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1" href="/")

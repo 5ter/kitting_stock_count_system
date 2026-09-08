@@ -10,6 +10,12 @@ const plants = ['A1','A2','A3','A4','A5','A6','A7'];
 
 function createAndStartBatch(form) {
   const labels = buildLabel(form);
+  const maxLabels = Number(process.env.MAX_LABELS_PER_BATCH) || 0;
+  if (maxLabels > 0 && labels.length > maxLabels) {
+    const error = new Error(`Batch exceeds the maximum of ${maxLabels} labels.`);
+    error.status = 400;
+    throw error;
+  }
   if (labels.length === 0) {
     const error = new Error('No labels were generated.');
     error.status = 400;
