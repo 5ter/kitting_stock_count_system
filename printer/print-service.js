@@ -1,7 +1,6 @@
 const { Socket } = require('node:net');
 
 const ENQ = '\x05';
-const activeConnections = new Map();
 
 const STATUS4_CODES = {
     '0': { mode: 'offline', ribbonNearEnd: false, bufferNearFull: false, printHalted: false },
@@ -86,18 +85,12 @@ function parseSatoStatus(buffer) {
  * @param {number} [opts.overallTimeoutMs=8000] - give up after this long
  */
 function sendAndCheckStatus(sbplData, ip, port = 9100, opts = {}) {
-    const {
-        connectTimeoutMs = 3000,
-        pollIntervalMs = 200,
-        overallTimeoutMs = 8000,
-        batchId
-    } = opts;
+    const { connectTimeoutMs = 3000, pollIntervalMs = 200, overallTimeoutMs = 8000 } = opts;
 
     return new Promise((resolve, reject) => {
         if (!ip) return reject(new Error('Printer IP address is required.'));
 
         const client = new Socket();
-        if (batchId !== undefined) activeConnections.set(batchId, client);
         let hasSettled = false;
         let pollTimer = null;
         let overallTimer = null;
@@ -107,9 +100,6 @@ function sendAndCheckStatus(sbplData, ip, port = 9100, opts = {}) {
             hasSettled = true;
             clearTimeout(pollTimer);
             clearTimeout(overallTimer);
-            if (batchId !== undefined && activeConnections.get(batchId) === client) {
-                activeConnections.delete(batchId);
-            }
             client.destroy();
             fn(arg);
         };
@@ -119,7 +109,6 @@ function sendAndCheckStatus(sbplData, ip, port = 9100, opts = {}) {
         client.connect(port, ip, () => {
             client.write(sbplData, 'utf8', (err) => {
                 if (err) return settle(reject, err);
-                // First poll after a short beat to let the printer start parsing
                 pollTimer = setTimeout(() => client.write(ENQ), pollIntervalMs);
             });
         });
@@ -130,37 +119,17 @@ function sendAndCheckStatus(sbplData, ip, port = 9100, opts = {}) {
 
         client.on('data', (chunk) => {
             const status = parseSatoStatus(chunk);
-
-            if (status.isError) {
-                return settle(resolve, { success: false, status });
-            }
-
+            if (status.isError) return settle(resolve, { success: false, status });
             const finished = status.mode === 'waiting' && status.remainingLabels === 0;
-            if (finished) {
-                return settle(resolve, { success: true, status });
-            }
-
-            // Still analyzing/printing/standby — poll again
+            if (finished) return settle(resolve, { success: true, status });
             pollTimer = setTimeout(() => client.write(ENQ), pollIntervalMs);
         });
 
-        client.on('timeout', () => {
-            settle(reject, new Error(`Printer connection timed out (${ip}:${port})`));
-        });
-
+        client.on('timeout', () => settle(reject, new Error(`Printer connection timed out (${ip}:${port})`)));
         client.on('error', (err) => settle(reject, err));
     });
 }
 
-function abortPrint(batchId) {
-    const client = activeConnections.get(batchId);
-    if (!client) return false;
-    activeConnections.delete(batchId);
-    client.destroy();
-    return true;
-}
-
 module.exports = {
     sendAndCheckStatus,
-    abortPrint,
 };

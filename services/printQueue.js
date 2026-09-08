@@ -1,6 +1,6 @@
 'use strict';
 const db = require('../db');
-const { sendAndCheckStatus, abortPrint } = require('../printer/print-service');
+const { sendAndCheckStatus } = require('../printer/print-service');
 
 const PRINTER_IP = process.env.PRINTER_IP;
 const PRINTER_PORT = Number(process.env.PRINTER_PORT) || 9100;
@@ -9,7 +9,6 @@ const PRINTER_PORT = Number(process.env.PRINTER_PORT) || 9100;
 // double-click on "Resume" while the previous run is still mid-print).
 const activeBatches = new Set();
 const cancellationRequests = new Set();
-const resetRequests = new Set();
 
 function describeError(status) {
   switch (status.errorCode) {
@@ -47,16 +46,7 @@ async function processBatch(batchId) {
   try {
     let label = db.getNextLabelToPrint(batchId);
     while (label) {
-      const currentBatch = db.getBatch(batchId);
-      if (!currentBatch || currentBatch.status === 'stopped') {
-        return currentBatch;
-      }
-
       if (cancellationRequests.has(batchId)) {
-        if (resetRequests.has(batchId)) {
-          db.stopBatch(batchId);
-          return db.getBatch(batchId);
-        }
         db.updateBatchStatus(batchId, 'cancelled');
         return db.getBatch(batchId);
       }
@@ -65,17 +55,8 @@ async function processBatch(batchId) {
       try {
         const { success, status } = await sendAndCheckStatus(label.sbpl, PRINTER_IP, PRINTER_PORT, { batchId });
         if (!success) {
-          if (resetRequests.has(batchId)) {
-            db.stopBatch(batchId);
-            return db.getBatch(batchId);
-          }
           db.markLabelStatus(label.id, 'failed', describeError(status));
           db.updateBatchStatus(batchId, 'paused');
-          return db.getBatch(batchId);
-        }
-        const completedBatch = db.getBatch(batchId);
-        if (resetRequests.has(batchId) || !completedBatch || completedBatch.status === 'stopped') {
-          db.stopBatch(batchId);
           return db.getBatch(batchId);
         }
         db.markLabelStatus(label.id, 'completed');
@@ -83,25 +64,13 @@ async function processBatch(batchId) {
         // Couldn't even reach the printer, or it never confirmed completion
         // (network failure, connection timeout, offline for too long, etc.)
         // -- treat the same way as a reported printer error.
-        if (resetRequests.has(batchId)) {
-          db.stopBatch(batchId);
-          return db.getBatch(batchId);
-        }
         db.markLabelStatus(label.id, 'failed', err.message);
         db.updateBatchStatus(batchId, 'paused');
         return db.getBatch(batchId);
       }
       if (cancellationRequests.has(batchId)) {
-        if (resetRequests.has(batchId)) {
-          db.stopBatch(batchId);
-          return db.getBatch(batchId);
-        }
         db.updateBatchStatus(batchId, 'cancelled');
         return db.getBatch(batchId);
-      }
-      const updatedBatch = db.getBatch(batchId);
-      if (!updatedBatch || updatedBatch.status === 'stopped') {
-        return updatedBatch;
       }
       label = db.getNextLabelToPrint(batchId);
     }
@@ -110,7 +79,6 @@ async function processBatch(batchId) {
   } finally {
     activeBatches.delete(batchId);
     cancellationRequests.delete(batchId);
-    resetRequests.delete(batchId);
   }
 }
 
@@ -121,19 +89,4 @@ function requestCancel(batchId) {
   return true;
 }
 
-function requestReset(batchId) {
-  const batch = db.getBatch(batchId);
-  if (!batch || !['processing', 'paused', 'cancelled'].includes(batch.status)) return false;
-
-  resetRequests.add(batchId);
-  cancellationRequests.add(batchId);
-  db.stopBatch(batchId);
-  abortPrint(batchId);
-  return true;
-}
-
-function isBatchActive(batchId) {
-  return activeBatches.has(batchId);
-}
-
-module.exports = { processBatch, requestCancel, requestReset, isBatchActive };
+module.exports = { processBatch, requestCancel };

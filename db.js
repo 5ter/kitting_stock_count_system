@@ -21,7 +21,7 @@ db.exec(`
     partition_start TEXT,
     partition_end TEXT,
     arrow TEXT NOT NULL DEFAULT 'none',
-    status TEXT NOT NULL DEFAULT 'pending', -- pending | processing | paused | cancelled | stopped | completed
+    status TEXT NOT NULL DEFAULT 'pending', -- pending | processing | paused | cancelled | completed
     total_count INTEGER NOT NULL,
     created_at TEXT NOT NULL
   );
@@ -77,8 +77,7 @@ function addLabel(batchId, sequenceNo, code, sbpl) {
 }
 
 // Picks up 'pending' labels in order, but also re-selects a 'failed' one
-// first if present -- this is what makes "resume" retry the label that
-// stopped the batch, instead of skipping past it.
+// first so resume retries the label that encountered the printer error.
 function getNextLabelToPrint(batchId) {
   return db.prepare(`
     SELECT * FROM labels
@@ -98,22 +97,6 @@ function markLabelStatus(labelId, status, errorMessage = null) {
 
 function updateBatchStatus(batchId, status) {
   db.prepare(`UPDATE batches SET status = ? WHERE id = ?`).run(status, batchId);
-}
-
-function stopBatch(batchId) {
-  db.exec('BEGIN');
-  try {
-    db.prepare(`
-      UPDATE labels
-      SET status = 'cancelled', error_message = 'Cancelled by reset.', printed_at = NULL
-      WHERE batch_id = ? AND status != 'completed'
-    `).run(batchId);
-    db.prepare(`UPDATE batches SET status = 'stopped' WHERE id = ?`).run(batchId);
-    db.exec('COMMIT');
-  } catch (error) {
-    db.exec('ROLLBACK');
-    throw error;
-  }
 }
 
 function getBatch(batchId) {
@@ -142,6 +125,5 @@ module.exports = {
   getNextLabelToPrint,
   markLabelStatus,
   updateBatchStatus,
-  stopBatch,
   getBatch
 };

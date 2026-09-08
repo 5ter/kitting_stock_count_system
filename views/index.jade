@@ -292,8 +292,9 @@ block content
         div(class="flex gap-2")
           button#generate-button(
             type="button"
-            class="flex-1 h-touch-target bg-secondary-container hover:bg-secondary-fixed text-on-secondary-container font-label-xl text-label-xl rounded-DEFAULT flex items-center justify-center gap-2 transition-colors border-2 border-primary"
+            class="flex-1 h-touch-target bg-secondary-container hover:bg-secondary-fixed text-on-secondary-container font-label-xl text-label-xl rounded-DEFAULT flex items-center justify-center gap-2 transition-colors border-2 border-primary disabled:bg-surface-container disabled:text-on-surface-variant disabled:border-outline-variant disabled:opacity-60 disabled:cursor-not-allowed"
             onclick="startPrint()"
+            disabled=(totalCount || 0) === 0
           )
             span#generate-icon(class="material-symbols-outlined") print
             span#generate-count Generate #{totalCount || 0} Labels
@@ -307,40 +308,37 @@ block content
             class="hidden h-touch-target px-4 bg-surface-container text-on-surface font-label-md rounded-DEFAULT border-2 border-outline"
             onclick="restartPrint()"
           ) Restart
-          button#reset-button(
-            type="button"
-            class="hidden h-touch-target px-4 bg-error-container text-on-error-container font-label-md rounded-DEFAULT border-2 border-error"
-            onclick="resetPrint()"
-          ) Reset
         div#generate-status(class="text-center text-[12px] text-on-surface-variant mt-2")
 
       script.
         let activeBatchId = null;
         let progressTimer = null;
-        let resetRequested = false;
-
         function setPrintingState(isPrinting) {
           const button = document.getElementById('generate-button');
           const icon = document.getElementById('generate-icon');
           const cancelButton = document.getElementById('cancel-button');
           const restartButton = document.getElementById('restart-button');
-          const resetButton = document.getElementById('reset-button');
           button.disabled = isPrinting;
           cancelButton.disabled = false;
           button.classList.toggle('opacity-70', isPrinting);
           icon.classList.toggle('animate-spin', isPrinting);
           cancelButton.classList.toggle('hidden', !isPrinting);
           if (isPrinting) restartButton.classList.add('hidden');
-          if (isPrinting && !resetRequested) resetButton.classList.add('hidden');
         }
 
         function setRecoveryState(isVisible) {
           document.getElementById('restart-button').classList.toggle('hidden', !isVisible);
         }
 
-        function setResetState(isVisible) {
-          document.getElementById('reset-button').classList.toggle('hidden', !isVisible);
+        function syncGenerateAvailability() {
+          const button = document.getElementById('generate-button');
+          const countText = document.getElementById('generate-count').textContent;
+          const hasLabels = !/^Generate 0 Labels$/.test(countText.trim());
+          button.disabled = !hasLabels || Boolean(activeBatchId);
         }
+
+        document.body.addEventListener('htmx:afterSettle', syncGenerateAvailability);
+        syncGenerateAvailability();
 
         function updateProgress(batch) {
           const remaining = Math.max(batch.total_count - batch.completedCount, 0);
@@ -353,25 +351,20 @@ block content
             status.textContent = `${batch.completedCount} of ${batch.total_count} labels printed`;
             setPrintingState(true);
           } else if (batch.status === 'completed') {
-            count.textContent = `Printed ${batch.total_count} Labels`;
-            status.textContent = 'Print completed successfully.';
-            setPrintingState(false);
-            setRecoveryState(false);
-            activeBatchId = null;
-            resetRequested = false;
+            status.textContent = 'Print completed successfully. Refreshing...';
+            window.location.reload();
+            return;
           } else if (batch.status === 'paused') {
             count.textContent = 'Failed';
             status.textContent = `${batch.completedCount} of ${batch.total_count} labels printed. ${batch.lastError || 'Printer error.'}`;
             setPrintingState(false);
             setRecoveryState(true);
-            setResetState(false);
             activeBatchId = batch.id;
           } else if (batch.status === 'cancelled') {
             count.textContent = 'Resume';
             status.textContent = `Printing paused after ${batch.completedCount} of ${batch.total_count} labels.`;
             setPrintingState(false);
             setRecoveryState(true);
-            setResetState(true);
             activeBatchId = batch.id;
           }
 
@@ -402,10 +395,9 @@ block content
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Unable to start printing.');
             activeBatchId = result.batchId;
-            resetRequested = false;
             setPrintingState(true);
             setRecoveryState(false);
-            setResetState(false);
+            syncGenerateAvailability();
             await pollBatch();
           } catch (error) {
             setPrintingState(false);
@@ -424,8 +416,6 @@ block content
             const response = await fetch(`/labels/batches/${activeBatchId}/cancel`, { method: 'POST' });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Unable to cancel printing.');
-            resetRequested = true;
-            setResetState(true);
             await pollBatch();
           } catch (error) {
             document.getElementById('cancel-button').disabled = false;
@@ -433,43 +423,8 @@ block content
           }
         }
 
-        async function resetPrint() {
-          if (!activeBatchId) return;
-          const status = document.getElementById('generate-status');
-          const resetButton = document.getElementById('reset-button');
-          resetButton.disabled = true;
-          document.getElementById('cancel-button').disabled = true;
-          resetRequested = true;
-          clearTimeout(progressTimer);
-          status.textContent = 'Resetting batch...';
-
-          try {
-            const response = await fetch(`/labels/batches/${activeBatchId}/reset`, { method: 'POST' });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || 'Unable to reset batch.');
-            await waitForReset();
-            await startPrint();
-          } catch (error) {
-            resetButton.disabled = false;
-            document.getElementById('cancel-button').disabled = false;
-            status.textContent = error.message;
-          }
-        }
-
-        async function waitForReset() {
-          const response = await fetch(`/labels/batches/${activeBatchId}`);
-          if (!response.ok) throw new Error('Unable to confirm batch reset.');
-          const batch = await response.json();
-          if (batch.status === 'stopped' && !batch.active) {
-            activeBatchId = null;
-            return;
-          }
-          await new Promise(resolve => setTimeout(resolve, 300));
-          return waitForReset();
-        }
-
         async function resumeOrRestart() {
-          const resume = window.confirm('Printing failed. Click OK to resume the stopped batch, or Cancel to start a new print session.');
+          const resume = window.confirm('Printing failed. Click OK to resume the batch, or Cancel to start a new print session.');
           if (resume) {
             await resumePrint();
           } else {
