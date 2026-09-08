@@ -119,11 +119,69 @@ function getBatch(batchId) {
   };
 }
 
+function getHistory() {
+  const rows = db.prepare(`
+    SELECT
+      b.id AS batch_id,
+      b.plant,
+      b.location_type,
+      b.status AS batch_status,
+      b.total_count,
+      b.created_at,
+      l.id AS label_id,
+      l.sequence_no,
+      l.location_code,
+      l.status AS label_status,
+      l.error_message,
+      l.printed_at
+    FROM batches b
+    LEFT JOIN labels l ON l.batch_id = b.id
+    ORDER BY b.created_at DESC, b.id DESC, l.sequence_no ASC
+  `).all();
+
+  const batches = new Map();
+  for (const row of rows) {
+    if (!batches.has(row.batch_id)) {
+      batches.set(row.batch_id, {
+        id: row.batch_id,
+        plant: row.plant,
+        locationType: row.location_type,
+        status: row.batch_status,
+        totalCount: row.total_count,
+        createdAt: row.created_at,
+        labels: []
+      });
+    }
+    if (row.label_id !== null) {
+      batches.get(row.batch_id).labels.push({
+        id: row.label_id,
+        sequenceNo: row.sequence_no,
+        locationCode: row.location_code,
+        status: row.label_status,
+        errorMessage: row.error_message,
+        printedAt: row.printed_at
+      });
+    }
+  }
+
+  const grouped = new Map();
+  for (const batch of batches.values()) {
+    const date = batch.createdAt.slice(0, 10);
+    if (!grouped.has(date)) grouped.set(date, []);
+    grouped.get(date).push(batch);
+  }
+  return [...grouped.entries()].map(([date, batchesForDate]) => ({
+    date,
+    batches: batchesForDate
+  }));
+}
+
 module.exports = {
   createBatch,
   addLabel,
   getNextLabelToPrint,
   markLabelStatus,
   updateBatchStatus,
-  getBatch
+  getBatch,
+  getHistory
 };

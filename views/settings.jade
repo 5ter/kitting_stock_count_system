@@ -1,0 +1,68 @@
+extends layout
+
+block content
+  header(class="w-full top-0 sticky flex items-center justify-between px-margin-mobile md:px-margin-desktop h-touch-target bg-surface border-b border-outline-variant z-50")
+    div(class="flex items-center gap-2")
+      span(class="material-symbols-outlined text-primary") settings
+      h1(class="font-headline-md text-headline-md font-bold text-primary") Settings
+    nav(class="hidden md:flex gap-4")
+      a(class="font-label-md text-label-md flex items-center gap-1 text-on-surface-variant hover:bg-surface-container px-2 py-1 rounded-DEFAULT" href="/")
+        span(class="material-symbols-outlined text-[18px]") label
+        | Generate
+      a(class="font-label-md text-label-md flex items-center gap-1 text-on-surface-variant hover:bg-surface-container px-2 py-1 rounded-DEFAULT" href="/history")
+        span(class="material-symbols-outlined text-[18px]") history
+        | History
+      a(class="font-label-md text-label-md flex items-center gap-1 text-primary hover:bg-surface-container px-2 py-1 rounded-DEFAULT" href="/settings")
+        span(class="material-symbols-outlined text-[18px]") settings
+        | Settings
+
+  main(class="flex-1 overflow-y-auto bg-surface-container-low p-margin-mobile md:p-margin-desktop")
+    div(class="max-w-3xl mx-auto space-y-6")
+      div
+        p(class="font-label-md text-on-surface-variant uppercase tracking-wide") System
+        h2(class="font-headline-lg text-headline-lg text-on-surface") Printer settings
+
+      section(class="bg-surface border border-outline-variant rounded-DEFAULT p-5 space-y-5")
+        div(class="flex items-center justify-between border-b border-outline-variant pb-4")
+          div
+            h3(class="font-title-lg text-title-lg text-on-surface") Connection
+            p(class="text-body-sm text-on-surface-variant") Changes apply to the next print batch and are saved in .env.
+          span(class="material-symbols-outlined text-tertiary") check_circle
+        form(method="post" action="/settings" class="space-y-4")
+          if saved
+            div(class="flex items-center gap-2 bg-tertiary-container text-on-tertiary-container px-3 py-2 rounded-DEFAULT")
+              span(class="material-symbols-outlined text-[18px]") check_circle
+              | Printer settings saved.
+          if error
+            div(class="flex items-center gap-2 bg-error-container text-on-error-container px-3 py-2 rounded-DEFAULT")
+              span(class="material-symbols-outlined text-[18px]") error
+              | #{error}
+          div(class="grid grid-cols-1 sm:grid-cols-2 gap-4")
+            div(class="space-y-1")
+              label(class="font-label-md text-on-surface-variant" for="printer-ip") Printer IP address
+              input#printer-ip(name="printerIp" type="text" required class="w-full h-touch-target px-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest text-on-surface" value=printerIp)
+            div(class="space-y-1")
+              label(class="font-label-md text-on-surface-variant" for="printer-port") Printer port
+              input#printer-port(name="printerPort" type="number" min="1" max="65535" required class="w-full h-touch-target px-3 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest text-on-surface" value=printerPort)
+          button(type="submit" class="h-touch-target px-5 bg-primary text-on-primary font-label-md rounded-DEFAULT hover:opacity-90") Save printer settings
+
+      section(class="bg-surface border border-outline-variant rounded-DEFAULT p-5 space-y-4")
+        div(class="flex items-center justify-between")
+          div
+            h3(class="font-title-lg text-title-lg text-on-surface") Regional time
+            p(class="text-body-sm text-on-surface-variant") Used for batch and label timestamps.
+          span(class="material-symbols-outlined text-primary") schedule
+        div(class="flex items-center justify-between bg-surface-container-low px-3 py-3 rounded-DEFAULT")
+          span(class="font-label-md text-on-surface-variant") Time zone
+          span(class="font-mono text-body-sm text-on-surface")= timeZone
+
+  nav(class="md:hidden flex justify-around items-center h-16 bg-surface border-t border-outline-variant fixed bottom-0 w-full z-50")
+    a(class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1" href="/")
+      span(class="material-symbols-outlined") label
+      span(class="font-label-md") Generate
+    a(class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1" href="/history")
+      span(class="material-symbols-outlined") history
+      span(class="font-label-md") History
+    a(class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-4 py-1" href="/settings")
+      span(class="material-symbols-outlined") settings
+      span(class="font-label-md") Settings
