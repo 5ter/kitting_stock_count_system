@@ -330,11 +330,35 @@ block content
           document.getElementById('restart-button').classList.toggle('hidden', !isVisible);
         }
 
+        function getLabelLengthError(formData) {
+          const plant = String(formData.get('plant') || '').trim();
+          const locationType = String(formData.get('locationType') || '').trim();
+          const shelfPrefix = String(formData.get('shelfPrefix') || '').trim();
+          const shelfEnd = String(formData.get('shelfEnd') || '').trim();
+          const shelfStart = String(formData.get('shelfStart') || '').trim();
+          const partitionEnd = String(formData.get('partitionEnd') || '').trim();
+          const partitionStart = String(formData.get('partitionStart') || '').trim();
+          const maxShelf = shelfEnd || shelfStart;
+          const maxPartition = partitionEnd || partitionStart;
+          let sampleCode = `${plant}_${locationType}_${shelfPrefix}${maxShelf}`;
+          if (maxPartition) sampleCode += `-${maxPartition}`;
+
+          if (sampleCode.length > 26) {
+            return `Generated barcode code is too long (${sampleCode.length} chars). Maximum limit is 26 characters including underscores and dashes.`;
+          }
+          return null;
+        }
+
         function syncGenerateAvailability() {
           const button = document.getElementById('generate-button');
           const countText = document.getElementById('generate-count').textContent;
           const hasLabels = !/^Generate 0 Labels$/.test(countText.trim());
-          button.disabled = !hasLabels || Boolean(activeBatchId);
+          const formData = new FormData(document.getElementById('label-form'));
+          const lengthError = getLabelLengthError(formData);
+          button.disabled = !hasLabels || Boolean(activeBatchId) || Boolean(lengthError);
+          if (!activeBatchId && lengthError) {
+            document.getElementById('generate-status').textContent = lengthError;
+          }
         }
 
         document.body.addEventListener('htmx:afterSettle', syncGenerateAvailability);
@@ -387,6 +411,8 @@ block content
           const status = document.getElementById('generate-status');
           try {
             const formData = new URLSearchParams(new FormData(document.getElementById('label-form')));
+            const lengthError = getLabelLengthError(formData);
+            if (lengthError) throw new Error(lengthError);
             const response = await fetch('/labels/generate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

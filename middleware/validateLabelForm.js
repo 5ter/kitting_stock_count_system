@@ -22,7 +22,7 @@ function validateLabelForm(req, res, next) {
 
   if (sampleCode.length > 26) {
     return res.status(400).json({
-      error: `Generated barcode code is too long (${sampleCode.length} chars). Maximum limit is 19 characters including underscores.`,
+      error: `Generated barcode code is too long (${sampleCode.length} chars). Maximum limit is 26 characters including underscores and dashes.`,
       sample: sampleCode
     });
   }

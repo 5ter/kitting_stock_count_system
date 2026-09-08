@@ -21,16 +21,43 @@ block content
       div
         p(class="font-label-md text-on-surface-variant uppercase tracking-wide") Operations
         h2(class="font-headline-lg text-headline-lg text-on-surface") Printed batches
+      div(class="bg-surface border border-outline-variant rounded-DEFAULT px-4 py-4 space-y-3")
+        div(class="flex items-center justify-between gap-3")
+          div
+            label(class="font-label-md text-on-surface" for="status-filter") Batch status
+            p(class="text-body-sm text-on-surface-variant") Narrow the timeline by print state.
+          span#status-filter-count(class="text-label-sm text-on-surface-variant") All batches
+        div#status-filter(class="flex flex-wrap gap-2" role="group" aria-label="Filter history by batch status")
+          button.status-filter-option.is-active(type="button" class="status-filter-option is-active inline-flex items-center gap-2 h-9 px-3 rounded-full border border-primary bg-primary text-on-primary text-label-sm transition-colors" data-status="all" aria-pressed="true")
+            span(class="material-symbols-outlined text-[17px]") apps
+            | All
+          button.status-filter-option(type="button" class="status-filter-option inline-flex items-center gap-2 h-9 px-3 rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant text-label-sm hover:border-primary hover:text-primary transition-colors" data-status="completed" aria-pressed="false")
+            span(class="h-2 w-2 rounded-full bg-tertiary")
+            | Completed
+          button.status-filter-option(type="button" class="status-filter-option inline-flex items-center gap-2 h-9 px-3 rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant text-label-sm hover:border-primary hover:text-primary transition-colors" data-status="processing" aria-pressed="false")
+            span(class="h-2 w-2 rounded-full bg-primary")
+            | Processing
+          button.status-filter-option(type="button" class="status-filter-option inline-flex items-center gap-2 h-9 px-3 rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant text-label-sm hover:border-primary hover:text-primary transition-colors" data-status="paused" aria-pressed="false")
+            span(class="h-2 w-2 rounded-full bg-error")
+            | Paused
+          button.status-filter-option(type="button" class="status-filter-option inline-flex items-center gap-2 h-9 px-3 rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant text-label-sm hover:border-primary hover:text-primary transition-colors" data-status="cancelled" aria-pressed="false")
+            span(class="h-2 w-2 rounded-full bg-on-surface-variant")
+            | Cancelled
+          button.status-filter-option(type="button" class="status-filter-option inline-flex items-center gap-2 h-9 px-3 rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant text-label-sm hover:border-primary hover:text-primary transition-colors" data-status="pending" aria-pressed="false")
+            span(class="h-2 w-2 rounded-full bg-secondary")
+            | Pending
 
       if !history.length
         div(class="bg-surface border border-outline-variant rounded-DEFAULT p-8 text-center text-on-surface-variant") No printed batches yet.
       else
         each day in history
-          section(class="space-y-3")
-            h3(class="font-title-lg text-title-lg text-primary px-1")= day.dateLabel
+          section.history-day(class="space-y-3")
+            h3(class="font-headline-md text-headline-md font-bold text-primary border-b-2 border-primary pb-2 pt-4 px-1 flex items-center gap-3")
+              span(class="material-symbols-outlined") calendar_month
+              span= day.dateLabel
             div(class="space-y-2")
               each batch in day.batches
-                details(class="bg-surface border border-outline-variant rounded-DEFAULT overflow-hidden")
+                details.history-batch(data-status=batch.status class="bg-surface border border-outline-variant rounded-DEFAULT overflow-hidden")
                   summary(class="list-none cursor-pointer px-4 py-3 flex flex-wrap items-center gap-4 hover:bg-surface-container")
                     div(class="flex-1 min-w-[180px]")
                       div(class="font-title-md text-title-md text-on-surface") Batch ##{batch.id}
@@ -76,3 +103,33 @@ block content
     a(class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-1" href="/settings")
       span(class="material-symbols-outlined") settings
       span(class="font-label-md") Settings
+
+  script.
+    const statusFilter = document.getElementById('status-filter');
+    const statusFilterCount = document.getElementById('status-filter-count');
+    statusFilter.addEventListener('click', event => {
+      const option = event.target.closest('.status-filter-option');
+      if (!option) return;
+      const selectedStatus = option.dataset.status;
+      statusFilter.querySelectorAll('.status-filter-option').forEach(button => {
+        const active = button === option;
+        button.className = active
+          ? 'status-filter-option is-active inline-flex items-center gap-2 h-9 px-3 rounded-full border border-primary bg-primary text-on-primary text-label-sm transition-colors'
+          : 'status-filter-option inline-flex items-center gap-2 h-9 px-3 rounded-full border border-outline-variant bg-surface-container-low text-on-surface-variant text-label-sm hover:border-primary hover:text-primary transition-colors';
+        button.setAttribute('aria-pressed', String(active));
+      });
+      let visibleCount = 0;
+      document.querySelectorAll('.history-day').forEach(day => {
+        let visibleBatches = 0;
+        day.querySelectorAll('.history-batch').forEach(batch => {
+          const visible = selectedStatus === 'all' || batch.dataset.status === selectedStatus;
+          batch.classList.toggle('hidden', !visible);
+          if (visible) {
+            visibleBatches += 1;
+            visibleCount += 1;
+          }
+        });
+        day.classList.toggle('hidden', visibleBatches === 0);
+      });
+      statusFilterCount.textContent = `${visibleCount} ${visibleCount === 1 ? 'batch' : 'batches'}`;
+    });
