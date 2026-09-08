@@ -1,6 +1,7 @@
 const { Socket } = require('node:net');
 
 const ENQ = '\x05';
+const activeConnections = new Map();
 
 const STATUS4_CODES = {
     '0': { mode: 'offline', ribbonNearEnd: false, bufferNearFull: false, printHalted: false },
@@ -88,13 +89,15 @@ function sendAndCheckStatus(sbplData, ip, port = 9100, opts = {}) {
     const {
         connectTimeoutMs = 3000,
         pollIntervalMs = 200,
-        overallTimeoutMs = 8000
+        overallTimeoutMs = 8000,
+        batchId
     } = opts;
 
     return new Promise((resolve, reject) => {
         if (!ip) return reject(new Error('Printer IP address is required.'));
 
         const client = new Socket();
+        if (batchId !== undefined) activeConnections.set(batchId, client);
         let hasSettled = false;
         let pollTimer = null;
         let overallTimer = null;
@@ -104,6 +107,9 @@ function sendAndCheckStatus(sbplData, ip, port = 9100, opts = {}) {
             hasSettled = true;
             clearTimeout(pollTimer);
             clearTimeout(overallTimer);
+            if (batchId !== undefined && activeConnections.get(batchId) === client) {
+                activeConnections.delete(batchId);
+            }
             client.destroy();
             fn(arg);
         };
@@ -146,6 +152,15 @@ function sendAndCheckStatus(sbplData, ip, port = 9100, opts = {}) {
     });
 }
 
+function abortPrint(batchId) {
+    const client = activeConnections.get(batchId);
+    if (!client) return false;
+    activeConnections.delete(batchId);
+    client.destroy();
+    return true;
+}
+
 module.exports = {
     sendAndCheckStatus,
+    abortPrint,
 };

@@ -3,6 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
+const { nowMalaysia } = require('./services/time');
 
 const DATA_DIR = path.join(__dirname, 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -20,7 +21,7 @@ db.exec(`
     partition_start TEXT,
     partition_end TEXT,
     arrow TEXT NOT NULL DEFAULT 'none',
-    status TEXT NOT NULL DEFAULT 'pending', -- pending | processing | paused | completed
+    status TEXT NOT NULL DEFAULT 'pending', -- pending | processing | paused | cancelled | stopped | completed
     total_count INTEGER NOT NULL,
     created_at TEXT NOT NULL
   );
@@ -31,7 +32,7 @@ db.exec(`
     sequence_no INTEGER NOT NULL,
     location_code TEXT NOT NULL,
     sbpl TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending', -- pending | printing | completed | failed
+    status TEXT NOT NULL DEFAULT 'pending', -- pending | printing | completed | failed | cancelled
     error_message TEXT,
     printed_at TEXT,
     UNIQUE(batch_id, sequence_no)
@@ -43,6 +44,10 @@ db.exec(`
 
 `);
 
+function normalizeText(value) {
+  return value == null ? null : String(value).trim().toUpperCase();
+}
+
 function createBatch(form, totalCount) {
   const stmt = db.prepare(`
     INSERT INTO batches
@@ -50,16 +55,16 @@ function createBatch(form, totalCount) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
   `);
   const result = stmt.run(
-    form.plant,
-    form.locationType || form.department,
-    form.shelfPrefix || null,
-    form.shelfStart || null,
-    form.shelfEnd || null,
-    form.partitionStart || null,
-    form.partitionEnd || null,
+    normalizeText(form.plant),
+    normalizeText(form.locationType || form.department),
+    normalizeText(form.shelfPrefix),
+    normalizeText(form.shelfStart),
+    normalizeText(form.shelfEnd),
+    normalizeText(form.partitionStart),
+    normalizeText(form.partitionEnd),
     form.arrowMode || 'none',
     totalCount,
-    new Date().toISOString()
+    nowMalaysia()
   );
   return Number(result.lastInsertRowid);
 }
@@ -68,7 +73,7 @@ function addLabel(batchId, sequenceNo, code, sbpl) {
   db.prepare(`
     INSERT INTO labels (batch_id, sequence_no, location_code, sbpl, status)
     VALUES (?, ?, ?, ?, 'pending')
-  `).run(batchId, sequenceNo, code, sbpl);
+  `).run(batchId, sequenceNo, normalizeText(code), normalizeText(sbpl));
 }
 
 // Picks up 'pending' labels in order, but also re-selects a 'failed' one
@@ -88,11 +93,27 @@ function markLabelStatus(labelId, status, errorMessage = null) {
     UPDATE labels
     SET status = ?, error_message = ?, printed_at = ?
     WHERE id = ?
-  `).run(status, errorMessage, status === 'completed' ? new Date().toISOString() : null, labelId);
+  `).run(status, errorMessage, status === 'completed' ? nowMalaysia() : null, labelId);
 }
 
 function updateBatchStatus(batchId, status) {
   db.prepare(`UPDATE batches SET status = ? WHERE id = ?`).run(status, batchId);
+}
+
+function stopBatch(batchId) {
+  db.exec('BEGIN');
+  try {
+    db.prepare(`
+      UPDATE labels
+      SET status = 'cancelled', error_message = 'Cancelled by reset.', printed_at = NULL
+      WHERE batch_id = ? AND status != 'completed'
+    `).run(batchId);
+    db.prepare(`UPDATE batches SET status = 'stopped' WHERE id = ?`).run(batchId);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
 }
 
 function getBatch(batchId) {
@@ -121,5 +142,6 @@ module.exports = {
   getNextLabelToPrint,
   markLabelStatus,
   updateBatchStatus,
+  stopBatch,
   getBatch
 };

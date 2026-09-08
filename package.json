@@ -13,6 +13,7 @@
     "watch:browser": "wait-on http://localhost:3000 && browser-sync start --config bs-config.js"
   },
   "dependencies": {
+    "@js-temporal/polyfill": "^0.5.1",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "express": "^4.22.2",

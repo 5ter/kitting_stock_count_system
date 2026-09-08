@@ -26,7 +26,7 @@ block content
       div(class="flex flex-col items-center w-full max-w-4xl")
         div#preview-grid(class="w-full flex flex-col items-center gap-6")
           include partials/preview-grid.jade
-        span(class="mt-8 flex items-center gap-2 font-label-xl text-primary border border-primary rounded-full px-6 h-10 hover:bg-surface-container transition-colors")
+        span#preview-total(class="mt-8 flex items-center gap-2 font-label-xl text-primary border border-primary rounded-full px-6 h-10 hover:bg-surface-container transition-colors")
           //- span(class="material-symbols-outlined text-[20px]") grid_view
           | Total: #{totalCount || 0} labels
 
@@ -289,17 +289,207 @@ block content
                 |  Both
       //- Fixed action footer — separate request from the live-preview form above.
       div(class="p-margin-mobile border-t border-outline-variant bg-surface")
-        button(
-          type="submit"
-          class="w-full h-touch-target bg-secondary-container hover:bg-secondary-fixed text-on-secondary-container font-label-xl text-label-xl rounded-DEFAULT flex items-center justify-center gap-2 transition-colors border-2 border-primary [&.htmx-request]:opacity-60"
-          hx-post="/labels/generate"
-          hx-include="#label-form"
-          hx-target="#generate-status"
-          hx-swap="innerHTML"
-        )
-          span(class="material-symbols-outlined") print
-          | Generate #{totalCount} Label
+        div(class="flex gap-2")
+          button#generate-button(
+            type="button"
+            class="flex-1 h-touch-target bg-secondary-container hover:bg-secondary-fixed text-on-secondary-container font-label-xl text-label-xl rounded-DEFAULT flex items-center justify-center gap-2 transition-colors border-2 border-primary"
+            onclick="startPrint()"
+          )
+            span#generate-icon(class="material-symbols-outlined") print
+            span#generate-count Generate #{totalCount || 0} Labels
+          button#cancel-button(
+            type="button"
+            class="hidden h-touch-target px-4 bg-error-container text-on-error-container font-label-md rounded-DEFAULT border-2 border-error"
+            onclick="cancelPrint()"
+          ) Cancel
+          button#restart-button(
+            type="button"
+            class="hidden h-touch-target px-4 bg-surface-container text-on-surface font-label-md rounded-DEFAULT border-2 border-outline"
+            onclick="restartPrint()"
+          ) Restart
+          button#reset-button(
+            type="button"
+            class="hidden h-touch-target px-4 bg-error-container text-on-error-container font-label-md rounded-DEFAULT border-2 border-error"
+            onclick="resetPrint()"
+          ) Reset
         div#generate-status(class="text-center text-[12px] text-on-surface-variant mt-2")
+
+      script.
+        let activeBatchId = null;
+        let progressTimer = null;
+        let resetRequested = false;
+
+        function setPrintingState(isPrinting) {
+          const button = document.getElementById('generate-button');
+          const icon = document.getElementById('generate-icon');
+          const cancelButton = document.getElementById('cancel-button');
+          const restartButton = document.getElementById('restart-button');
+          const resetButton = document.getElementById('reset-button');
+          button.disabled = isPrinting;
+          cancelButton.disabled = false;
+          button.classList.toggle('opacity-70', isPrinting);
+          icon.classList.toggle('animate-spin', isPrinting);
+          cancelButton.classList.toggle('hidden', !isPrinting);
+          if (isPrinting) restartButton.classList.add('hidden');
+          if (isPrinting && !resetRequested) resetButton.classList.add('hidden');
+        }
+
+        function setRecoveryState(isVisible) {
+          document.getElementById('restart-button').classList.toggle('hidden', !isVisible);
+        }
+
+        function setResetState(isVisible) {
+          document.getElementById('reset-button').classList.toggle('hidden', !isVisible);
+        }
+
+        function updateProgress(batch) {
+          const remaining = Math.max(batch.total_count - batch.completedCount, 0);
+          const count = document.getElementById('generate-count');
+          const status = document.getElementById('generate-status');
+          const button = document.getElementById('generate-button');
+
+          if (batch.status === 'processing') {
+            count.textContent = `Printing.. (${remaining})`;
+            status.textContent = `${batch.completedCount} of ${batch.total_count} labels printed`;
+            setPrintingState(true);
+          } else if (batch.status === 'completed') {
+            count.textContent = `Printed ${batch.total_count} Labels`;
+            status.textContent = 'Print completed successfully.';
+            setPrintingState(false);
+            setRecoveryState(false);
+            activeBatchId = null;
+            resetRequested = false;
+          } else if (batch.status === 'paused') {
+            count.textContent = 'Failed';
+            status.textContent = `${batch.completedCount} of ${batch.total_count} labels printed. ${batch.lastError || 'Printer error.'}`;
+            setPrintingState(false);
+            setRecoveryState(true);
+            setResetState(false);
+            activeBatchId = batch.id;
+          } else if (batch.status === 'cancelled') {
+            count.textContent = 'Resume';
+            status.textContent = `Printing paused after ${batch.completedCount} of ${batch.total_count} labels.`;
+            setPrintingState(false);
+            setRecoveryState(true);
+            setResetState(true);
+            activeBatchId = batch.id;
+          }
+
+          button.onclick = batch.status === 'paused' ? resumeOrRestart : batch.status === 'cancelled' ? resumePrint : startPrint;
+        }
+
+        async function pollBatch() {
+          if (!activeBatchId) return;
+          const response = await fetch(`/labels/batches/${activeBatchId}`);
+          if (!response.ok) throw new Error('Unable to read print progress.');
+          const batch = await response.json();
+          updateProgress(batch);
+          if (batch.status === 'processing') {
+            progressTimer = setTimeout(pollBatch, 500);
+          }
+        }
+
+        async function startPrint() {
+          if (activeBatchId) return;
+          const status = document.getElementById('generate-status');
+          try {
+            const formData = new URLSearchParams(new FormData(document.getElementById('label-form')));
+            const response = await fetch('/labels/generate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: formData
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Unable to start printing.');
+            activeBatchId = result.batchId;
+            resetRequested = false;
+            setPrintingState(true);
+            setRecoveryState(false);
+            setResetState(false);
+            await pollBatch();
+          } catch (error) {
+            setPrintingState(false);
+            setRecoveryState(false);
+            status.textContent = error.message;
+          }
+        }
+
+        async function cancelPrint() {
+          if (!activeBatchId) return;
+          const status = document.getElementById('generate-status');
+          document.getElementById('cancel-button').disabled = true;
+          clearTimeout(progressTimer);
+          status.textContent = 'Cancelling after the current label...';
+          try {
+            const response = await fetch(`/labels/batches/${activeBatchId}/cancel`, { method: 'POST' });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Unable to cancel printing.');
+            resetRequested = true;
+            setResetState(true);
+            await pollBatch();
+          } catch (error) {
+            document.getElementById('cancel-button').disabled = false;
+            status.textContent = error.message;
+          }
+        }
+
+        async function resetPrint() {
+          if (!activeBatchId) return;
+          const status = document.getElementById('generate-status');
+          const resetButton = document.getElementById('reset-button');
+          resetButton.disabled = true;
+          document.getElementById('cancel-button').disabled = true;
+          resetRequested = true;
+          clearTimeout(progressTimer);
+          status.textContent = 'Resetting batch...';
+
+          try {
+            const response = await fetch(`/labels/batches/${activeBatchId}/reset`, { method: 'POST' });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Unable to reset batch.');
+            await waitForReset();
+            await startPrint();
+          } catch (error) {
+            resetButton.disabled = false;
+            document.getElementById('cancel-button').disabled = false;
+            status.textContent = error.message;
+          }
+        }
+
+        async function waitForReset() {
+          const response = await fetch(`/labels/batches/${activeBatchId}`);
+          if (!response.ok) throw new Error('Unable to confirm batch reset.');
+          const batch = await response.json();
+          if (batch.status === 'stopped' && !batch.active) {
+            activeBatchId = null;
+            return;
+          }
+          await new Promise(resolve => setTimeout(resolve, 300));
+          return waitForReset();
+        }
+
+        async function resumeOrRestart() {
+          const resume = window.confirm('Printing failed. Click OK to resume the stopped batch, or Cancel to start a new print session.');
+          if (resume) {
+            await resumePrint();
+          } else {
+            await restartPrint();
+          }
+        }
+
+        async function resumePrint() {
+          if (!activeBatchId) return;
+          const response = await fetch(`/labels/batches/${activeBatchId}/resume`, { method: 'POST' });
+          if (response.ok) {
+            setPrintingState(true);
+            await pollBatch();
+          }
+        }
+
+        async function restartPrint() {
+          activeBatchId = null;
+          await startPrint();
+        }
 
   //- ===== Bottom Nav (mobile only) =====
   nav(class="md:hidden flex justify-around items-center h-16 bg-surface border-t border-outline-variant fixed bottom-0 w-full z-50")

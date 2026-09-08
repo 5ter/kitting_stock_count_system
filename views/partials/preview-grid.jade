@@ -2,6 +2,13 @@ include ../mixins/label-card.jade
 
 - const total = labels ? labels.length : 0
 
+if includeCountUpdates
+  span#preview-total(class="mt-8 flex items-center gap-2 font-label-xl text-primary border border-primary rounded-full px-6 h-10 hover:bg-surface-container transition-colors" hx-swap-oob="outerHTML")
+    | Total: #{totalCount || total} labels
+
+  span#generate-count(hx-swap-oob="outerHTML")
+    | Generate #{totalCount || total} Labels
+
 if total === 0
   p(class="text-on-surface-variant text-sm") No labels to preview yet.
 

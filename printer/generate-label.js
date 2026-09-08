@@ -1,16 +1,7 @@
 'use strict'
-const net = require('net');
-
-
-// Printer Network Settings
-// const PRINTER_IP = process.env.PRINTER_IP;
-// const PRINTER_PORT = process.env.PRINTER_PORT;
-const PRINTER_IP = '10.199.120.78';
-const PRINTER_PORT = 9100;
 
 // SBPL Control Characters
 const ESC = '\x1B'
-const ENQ = '\x05'; // ASCII ENQ (Status Request)
 
 // CONSTANT
 // const DPI = 305;

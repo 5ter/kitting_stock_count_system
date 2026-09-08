@@ -4,29 +4,27 @@ const { buildLabel } = require('../services/buildLabel');
 const validateLabelForm = require('../middleware/validateLabelForm');
 const db = require('../db'); // Import the database connection
 const { generateLabel } = require('../printer/generate-label');
-const { processBatch } = require('../services/printQueue');
+const { processBatch, requestCancel, requestReset, isBatchActive } = require('../services/printQueue');
 // add the plant option
 const plants = ['A1','A2','A3','A4','A5','A6','A7'];
-
-// routes/index.js
-let labelLength = 0;
 
 router.get('/', (req, res) => {
   res.render('index', { 
     title: 'Generate Shelf Label', 
     // labels: sampleLabels, 
-    totalCount: labelLength,
+    totalCount: 0,
     plants: plants,
     departments: [],
    });
 });
 
 router.post('/labels/preview', (req, res) => {
-   console.log('BODY:', req.body); // ← temporary
-  const labels = buildLabel(req.body); 
-  labelLength = labels.length; // Update the label length based on the generated labels
-  console.log('Preview labels:', labels); // Log the generated labels for debugging
-  res.render('partials/preview-grid', { labels });
+  const labels = buildLabel(req.body);
+  res.render('partials/preview-grid', {
+    labels,
+    totalCount: labels.length,
+    includeCountUpdates: true
+  });
 });
 
 router.post('/labels/generate', validateLabelForm, async (req, res) => {
@@ -43,18 +41,50 @@ router.post('/labels/generate', validateLabelForm, async (req, res) => {
       db.addLabel(batchId, index + 1, label.labelString, sbpl);
     });
 
-    const batch = await processBatch(batchId);
-    if (batch.status !== 'completed') {
-      return res.status(502).send(
-        `<p>Printing paused after ${batch.completedCount} of ${batch.total_count} labels: ${batch.lastError || 'Printer error.'}</p>`
-      );
-    }
-
-    res.send(`<p>Batch of ${batch.total_count} labels printed successfully.</p>`);
+    processBatch(batchId).catch(error => {
+      console.error(`Batch ${batchId} failed unexpectedly:`, error);
+    });
+    res.json({ batchId, totalCount: labels.length });
   } catch (error) {
     console.error('Label generation failed:', error);
-    res.status(500).send(`<p>Unable to print labels: ${error.message}</p>`);
+    res.status(500).json({ error: `Unable to print labels: ${error.message}` });
   }
+});
+
+router.get('/labels/batches/:batchId', (req, res) => {
+  const batch = db.getBatch(Number(req.params.batchId));
+  if (!batch) return res.status(404).json({ error: 'Batch not found.' });
+  res.json({ ...batch, active: isBatchActive(Number(req.params.batchId)) });
+});
+
+router.post('/labels/batches/:batchId/cancel', (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!requestCancel(batchId)) {
+    return res.status(409).json({ error: 'Batch is not currently printing.' });
+  }
+  res.json({ batchId, status: 'cancelling' });
+});
+
+router.post('/labels/batches/:batchId/reset', (req, res) => {
+  const batchId = Number(req.params.batchId);
+  if (!requestReset(batchId)) {
+    return res.status(409).json({ error: 'Batch cannot be reset in its current state.' });
+  }
+  res.status(202).json({ batchId, status: 'resetting' });
+});
+
+router.post('/labels/batches/:batchId/resume', (req, res) => {
+  const batchId = Number(req.params.batchId);
+  const batch = db.getBatch(batchId);
+  if (!batch) return res.status(404).json({ error: 'Batch not found.' });
+  if (!['paused', 'cancelled'].includes(batch.status)) {
+    return res.status(409).json({ error: 'Only paused or cancelled batches can be resumed.' });
+  }
+
+  processBatch(batchId).catch(error => {
+    console.error(`Batch ${batchId} resume failed unexpectedly:`, error);
+  });
+  res.json({ batchId, status: 'processing' });
 });
 
 module.exports = router;
