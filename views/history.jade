@@ -59,7 +59,7 @@ block content
               each batch in day.batches
                 details.history-batch(data-status=batch.status class="bg-surface border border-outline-variant rounded-DEFAULT overflow-hidden")
                   summary(class="list-none cursor-pointer px-4 py-3 flex flex-wrap items-center gap-4 hover:bg-surface-container")
-                    div(class="flex-1 min-w-[180px]")
+                    div(class="flex-1 min-w-45")
                       div(class="font-title-md text-title-md text-on-surface") Batch ##{batch.id}
                       div(class="text-body-sm text-on-surface-variant") #{batch.plant} / #{batch.locationType}
                     div(class="text-body-sm text-on-surface-variant") #{batch.totalCount} labels
