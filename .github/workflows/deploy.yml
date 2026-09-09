@@ -1,0 +1,35 @@
+name: Deploy Production
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: [self-hosted, Windows, production]
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Update application
+        run: |
+          Set-Location $env:APP_DIR
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          npm ci
+          npm run build:css
+
+      - name: Start or update PM2 application
+        run: |
+          Set-Location $env:APP_DIR
+          pm2 restart ecosystem.config.js --update-env
+          pm2 save

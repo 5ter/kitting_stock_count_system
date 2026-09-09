@@ -7,10 +7,13 @@
     "node": "v24.19.0"
   },
   "scripts": {
+    "start": "node --env-file=.env ./bin/www",
+    "check": "node --check app.js && node --check db.js && node --check routes/index.js && node --check routes/history.js && node --check routes/settings.js && node --check services/printQueue.js && node --check printer/print-service.js && node --check middleware/validateLabelForm.js",
+    "build:css": "npx tailwindcss -i ./styles/tailwind.css -o ./public/stylesheets/style.css",
     "dev": "concurrently \"npm run watch:server\" \"npm run watch:css\" \"npm run watch:browser\"",
     "watch:css": "npx tailwindcss -i ./styles/tailwind.css -o ./public/stylesheets/style.css --watch",
     "watch:server": "cross-env DEBUG=warehouse-label-project:* nodemon",
-    "watch:browser": "wait-on http://localhost:3000 && browser-sync start --config bs-config.js"
+    "watch:browser": "wait-on http://localhost:3000 && browser-sync start --config bs-config.js",
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",

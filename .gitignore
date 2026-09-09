@@ -1,6 +1,9 @@
 
 # Node.js specific files and directories
 node_modules/
+.env
+.env.*
+!.env.example
 npm-debug.log
 yarn-error.log
 lerna-debug.log
