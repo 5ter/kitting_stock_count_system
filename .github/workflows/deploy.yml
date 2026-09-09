@@ -12,16 +12,16 @@ permissions:
 jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: [self-hosted]  # We'll fix the labels later!
+    runs-on: [self-hosted]
 
     defaults:
       run:
-        shell: cmd  # <--- CHANGE HERE from powershell to cmd
+        shell: powershell
 
     steps:
       - name: Update application
         run: |
-          cd /d "%APP_DIR%"
+          Set-Location $env:APP_DIR
           git fetch origin main
           git checkout main
           git reset --hard origin/main
@@ -30,6 +30,6 @@ jobs:
 
       - name: Start or update PM2 application
         run: |
-          cd /d "%APP_DIR%"
+          Set-Location $env:APP_DIR
           pm2 restart ecosystem.config.js --update-env
           pm2 save
