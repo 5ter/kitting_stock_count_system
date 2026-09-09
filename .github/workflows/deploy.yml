@@ -28,8 +28,3 @@ jobs:
           git reset --hard origin/main
           npm ci
           npm run build:css
-
-      - name: Start or update PM2 application
-        run: |
-          pm2 restart C:\Barcode_Printing_Node\ecosystem.config.js --update-env
-          pm2 save
