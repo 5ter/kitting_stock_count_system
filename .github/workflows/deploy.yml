@@ -31,5 +31,5 @@ jobs:
 
       - name: Start or update PM2 application
         run: |
-          npx pm2 restart C:\Barcode_Printing_Node\ecosystem.config.js --update-env
-          npx pm2 save
+          C:\Users\birl.server\AppData\Roaming\npm\pm2.cmd restart C:\Barcode_Printing_Node\ecosystem.config.js --update-env
+          C:\Users\birl.server\AppData\Roaming\npm\pm2.cmd save
