@@ -9,3 +9,30 @@ html(class='h-full', lang='en')
     script(src='/javascripts/htmx.min.js')
   body(class='bg-background text-on-background h-full flex flex-col font-sans')
     block content
+    footer(class="mt-auto border-t border-outline-variant bg-surface px-margin-mobile md:px-1 py-6")
+      div(class="max-w-full")
+        
+        //- Main Row: App Name | Copyright | Email
+        div(class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center text-center md:text-left")
+          
+          //- Far Left: App Name (with icon)
+          div(class="flex items-center justify-center md:justify-start gap-2.5")
+            span(class="material-symbols-outlined text-primary text-2xl") precision_manufacturing
+            span(class="font-semibold text-sm text-on-surface tracking-tight") Warehouse Label System
+
+          //- Center: Copyright Text
+          div(class="text-sm text-on-surface-variant md:text-center")
+            | Developed with love by 
+            span(class="font-medium text-on-surface") Actmax Automation Department
+            | . All rights reserved.
+            //- Bottom Row: Version (placed distinctly at the bottom)
+            div(class="mt-3 pt-2 text-center text-xs text-on-surface-variant/60 border-t border-outline-variant/40")
+              | Version v1
+
+          //- Far Right: Email
+          div(class="flex items-center justify-center md:justify-end")
+            a(class="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-primary hover:underline underline-offset-2 transition-all duration-200" 
+              href="mailto:Fakrul.Hussin@actmax.com?subject=Inquiry%20about%20Warehouse%20Label%20System&cc=automation@actmax.com")
+              span(class="material-symbols-outlined text-base") mail
+              span support@automation.com
+
