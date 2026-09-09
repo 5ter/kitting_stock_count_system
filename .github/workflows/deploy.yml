@@ -16,13 +16,13 @@ jobs:
 
     defaults:
       run:
-        shell: bash
+        shell: cmd
 
     steps:
       - name: Update application
         run: |
-          cd "$APP_DIR"
-          git config --global --add safe.directory "$APP_DIR"
+          cd /d "%APP_DIR%"
+          git config --global --add safe.directory "%APP_DIR%"
           git fetch origin main
           git checkout main
           git reset --hard origin/main
