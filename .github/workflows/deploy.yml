@@ -16,7 +16,7 @@ jobs:
 
     defaults:
       run:
-        shell: powershell
+        shell: cmd
 
     steps:
       - name: Update application
