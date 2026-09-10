@@ -67,7 +67,7 @@ block content
         div(class="flex flex-wrap gap-3")
           a(class="h-touch-target px-5 flex items-center bg-secondary-container text-on-secondary-container font-label-md rounded-DEFAULT" href="/settings/history/export") Export history
           form(method="post" action="/settings/history/clear" onsubmit="return confirm('Clear all batch and label history? This cannot be undone.')")
-            button(type="submit" class="h-touch-target px-5 bg-error-container text-on-error-container font-label-md rounded-DEFAULT") Clear history
+            button(type="submit" class="h-touch-target px-5 bg-error-container text-on-error-container font-label-md rounded-DEFAULT hover:cursor-pointer") Clear history
         if historyCleared
           p(class="text-body-sm text-tertiary") History cleared.
 

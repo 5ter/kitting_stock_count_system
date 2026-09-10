@@ -2,9 +2,6 @@
 const db = require('../db');
 const { sendAndCheckStatus } = require('../printer/print-service');
 
-const PRINTER_IP = process.env.PRINTER_IP;
-const PRINTER_PORT = Number(process.env.PRINTER_PORT) || 9100;
-
 // Prevents the same batch being processed twice in parallel (e.g. a
 // double-click on "Resume" while the previous run is still mid-print).
 const activeBatches = new Set();
@@ -39,6 +36,9 @@ function describeError(status) {
  * handler, they just kick it off and let the client poll for progress.
  */
 async function processBatch(batchId) {
+  const printerIp = process.env.PRINTER_IP;
+  const printerPort = Number(process.env.PRINTER_PORT) || 9100;
+
   if (activeBatches.has(batchId)) return db.getBatch(batchId);
   activeBatches.add(batchId);
   cancellationRequests.delete(batchId);
@@ -53,7 +53,7 @@ async function processBatch(batchId) {
 
       db.markLabelStatus(label.id, 'printing');
       try {
-        const { success, status } = await sendAndCheckStatus(label.sbpl, PRINTER_IP, PRINTER_PORT, { batchId });
+        const { success, status } = await sendAndCheckStatus(label.sbpl, printerIp, printerPort, { batchId });
         if (!success) {
           db.markLabelStatus(label.id, 'failed', describeError(status));
           db.updateBatchStatus(batchId, 'paused');
