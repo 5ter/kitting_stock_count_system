@@ -34,6 +34,52 @@ function saveApplicationValue(key, value) {
   process.env[key] = String(value);
 }
 
+function escapeCsvValue(value) {
+  const text = value == null ? '' : String(value);
+  // Prevent spreadsheet applications from treating user-entered label data as a formula.
+  const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+  return `"${safeText.replace(/"/g, '""')}"`;
+}
+
+function historyToCsv(history) {
+  const headings = [
+    'Batch ID',
+    'Plant',
+    'Location Type',
+    'Batch Status',
+    'Batch Created At',
+    'Batch Label Count',
+    'Label Sequence',
+    'Shelf Label',
+    'Label Status',
+    'Print Error',
+    'Printed At'
+  ];
+  const rows = [headings];
+
+  for (const day of history) {
+    for (const batch of day.batches) {
+      for (const label of batch.labels) {
+        rows.push([
+          batch.id,
+          batch.plant,
+          batch.locationType,
+          batch.status,
+          batch.createdAt,
+          batch.totalCount,
+          label.sequenceNo,
+          label.locationCode,
+          label.status,
+          label.errorMessage,
+          label.printedAt
+        ]);
+      }
+    }
+  }
+
+  return rows.map(row => row.map(escapeCsvValue).join(',')).join('\r\n');
+}
+
 router.get('/', (req, res) => {
   res.render('settings', {
     title: 'Settings',
@@ -89,6 +135,14 @@ router.post('/application', (req, res) => {
 
 router.get('/history/export', (req, res) => {
   res.type('application/json').attachment('label-history.json').send(JSON.stringify(db.getHistory(), null, 2));
+});
+
+router.get('/history/export/csv', (req, res) => {
+  const csv = historyToCsv(db.getHistory());
+  res
+    .type('text/csv; charset=utf-8')
+    .attachment('shelf-label-history.csv')
+    .send(`\uFEFF${csv}`);
 });
 
 router.post('/history/clear', (req, res) => {

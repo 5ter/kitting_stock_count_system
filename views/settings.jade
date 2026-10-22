@@ -63,9 +63,14 @@ block content
       section(class="bg-surface border border-outline-variant rounded-DEFAULT p-5 space-y-4")
         div
           h3(class="font-title-lg text-title-lg text-on-surface") History tools
-          p(class="text-body-sm text-on-surface-variant") Export a backup before clearing printed batch history.
+          p(class="text-body-sm text-on-surface-variant") Export the printed-label history before clearing it. CSV opens in Excel; JSON is a full backup.
         div(class="flex flex-wrap gap-3")
-          a(class="h-touch-target px-5 flex items-center bg-secondary-container text-on-secondary-container font-label-md rounded-DEFAULT" href="/settings/history/export") Export history
+          a(class="h-touch-target px-5 flex items-center gap-2 bg-primary text-on-primary font-label-md rounded-DEFAULT hover:opacity-90" href="/settings/history/export/csv")
+            span(class="material-symbols-outlined text-[18px]") download
+            | Export CSV
+          a(class="h-touch-target px-5 flex items-center gap-2 bg-secondary-container text-on-secondary-container font-label-md rounded-DEFAULT" href="/settings/history/export")
+            span(class="material-symbols-outlined text-[18px]") data_object
+            | Export JSON backup
           form(method="post" action="/settings/history/clear" onsubmit="return confirm('Clear all batch and label history? This cannot be undone.')")
             button(type="submit" class="h-touch-target px-5 bg-error-container text-on-error-container font-label-md rounded-DEFAULT hover:cursor-pointer") Clear history
         if historyCleared
