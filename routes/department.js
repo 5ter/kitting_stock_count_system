@@ -6,7 +6,8 @@ const departments = {
   'A1': ['prod-stamp-L1','warehouse','assembly'],
   'A2': ['production','warehouse','ass-L3'],
   'A3': ['production','warehouse','assembly'],
-  'A4': ['production','warehouse','assembly']
+  'A4': ['production','warehouse','assembly'],
+  'A5': ['warehouse']
 };
 
 // departments route
